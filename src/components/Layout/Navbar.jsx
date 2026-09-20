@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Sparkles, Download, LogOut, Smartphone, CheckCircle, Crown } from 'lucide-react';
+import { Sparkles, Download, LogOut, Smartphone, CheckCircle, Crown, Settings } from 'lucide-react';
 
-export const Navbar = ({ onOpenAuth, onExportCSV, onPrint }) => {
+export const Navbar = ({ onOpenAuth, onOpenSettings, onExportCSV, onPrint }) => {
   const { user, profile, signOut, isDemoMode, getDaysRemainingInTrial } = useAuth();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -122,7 +122,9 @@ export const Navbar = ({ onOpenAuth, onExportCSV, onPrint }) => {
           {/* Usuário / Login */}
           {user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div
+              <button
+                type="button"
+                onClick={onOpenSettings}
                 style={{
                   background: 'rgba(255, 255, 255, 0.06)',
                   padding: '6px 12px',
@@ -132,7 +134,10 @@ export const Navbar = ({ onOpenAuth, onExportCSV, onPrint }) => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
+                  cursor: 'pointer',
+                  color: 'inherit',
                 }}
+                title="Abrir Configurações do Perfil"
               >
                 <div
                   style={{
@@ -145,7 +150,8 @@ export const Navbar = ({ onOpenAuth, onExportCSV, onPrint }) => {
                 <span style={{ color: 'var(--text-muted)', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {profile?.full_name || user.email}
                 </span>
-              </div>
+                <Settings size={13} style={{ opacity: 0.7 }} />
+              </button>
               <button
                 onClick={signOut}
                 className="btn btn-secondary btn-sm"

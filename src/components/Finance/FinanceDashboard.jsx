@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import {
@@ -14,7 +15,8 @@ import {
   ChevronRight,
   Briefcase,
   DollarSign,
-  Filter
+  Filter,
+  Target
 } from 'lucide-react';
 import { CategoryReport } from './CategoryReport';
 
@@ -24,6 +26,7 @@ const MONTHS = [
 ];
 
 export const FinanceDashboard = ({ onOpenNewModal }) => {
+  const { profile } = useAuth();
   const { records, deleteRecord } = useFinance();
 
   const now = new Date();
@@ -293,6 +296,50 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
               : 'Atenção: Gastos superaram as receitas no período'}
           </div>
         </div>
+
+        {/* Meta Mensal de Economia (Se configurada) */}
+        {profile?.savings_goal > 0 && (
+          <div className="glass-card" style={{ padding: '20px', borderLeft: '4px solid #8b5cf6' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                META DE ECONOMIA
+              </span>
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: 'rgba(139, 92, 246, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Target size={16} color="#8b5cf6" />
+              </div>
+            </div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#a78bfa' }}>
+              {formatCurrency(profile.savings_goal)}
+            </div>
+            <div style={{ marginTop: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: 'var(--text-dim)', marginBottom: '3px' }}>
+                <span>{saldoFinal >= profile.savings_goal ? '🎉 Meta Atingida!' : `${((Math.max(0, saldoFinal) / profile.savings_goal) * 100).toFixed(0)}% alcançado`}</span>
+                <span>{formatCurrency(Math.max(0, saldoFinal))}</span>
+              </div>
+              <div style={{ width: '100%', height: '5px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '999px', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${Math.min(100, Math.max(0, (saldoFinal / profile.savings_goal) * 100))}%`,
+                    height: '100%',
+                    background: saldoFinal >= profile.savings_goal ? '#10b981' : 'linear-gradient(90deg, #8b5cf6, #06b6d4)',
+                    borderRadius: '999px',
+                    transition: 'width 0.4s ease',
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Grid: Gráfico de Categorias e Lista de Lançamentos */}

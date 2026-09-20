@@ -6,6 +6,7 @@ import { PaywallBanner } from './components/Subscription/PaywallBanner';
 import { FinanceDashboard } from './components/Finance/FinanceDashboard';
 import { FinanceFormModal } from './components/Finance/FinanceFormModal';
 import { AuthModal } from './components/Auth/AuthModal';
+import { UserSettingsModal } from './components/Settings/UserSettingsModal';
 import { exportToCSV, printReport } from './utils/exportData';
 
 const MainApp = () => {
@@ -14,6 +15,7 @@ const MainApp = () => {
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   const handleExportCSV = () => {
     exportToCSV(records, `finanzen_relatorio_${new Date().toISOString().split('T')[0]}.csv`);
@@ -23,6 +25,7 @@ const MainApp = () => {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar
         onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
         onExportCSV={handleExportCSV}
         onPrint={printReport}
       />
@@ -44,6 +47,12 @@ const MainApp = () => {
         <AuthModal
           isOpen={isAuthModalOpen}
           onClose={() => setIsAuthModalOpen(false)}
+        />
+
+        {/* Modal de Configurações do Usuário e Metas */}
+        <UserSettingsModal
+          isOpen={isSettingsModalOpen}
+          onClose={() => setIsSettingsModalOpen(false)}
         />
       </main>
 

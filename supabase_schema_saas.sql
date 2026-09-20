@@ -3,11 +3,14 @@
 -- Execute este script no SQL Editor do seu projeto Supabase
 -- ==============================================================================
 
--- 1. TABELA DE PERFIS E ASSINATURAS DOS CLIENTES
+-- 1. TABELA DE PERFIS, ASSINATURAS E CONFIGURAÇÕES DOS CLIENTES
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT,
   full_name TEXT,
+  phone TEXT,
+  savings_goal NUMERIC DEFAULT 0,
+  settings JSONB DEFAULT '{"theme": "dark", "currency": "BRL"}'::jsonb,
   subscription_status TEXT DEFAULT 'trial', -- 'trial', 'active', 'expired', 'lifetime'
   trial_ends_at TIMESTAMPTZ DEFAULT (timezone('utc'::text, now()) + INTERVAL '7 days'),
   subscription_ends_at TIMESTAMPTZ,
@@ -22,6 +25,10 @@ CREATE POLICY "Usuários podem ver seu próprio perfil"
   ON public.profiles FOR SELECT 
   USING (auth.uid() = id);
 
+CREATE POLICY "Usuários podem inserir seu próprio perfil" 
+  ON public.profiles FOR INSERT 
+  WITH CHECK (auth.uid() = id);
+
 CREATE POLICY "Usuários podem atualizar seu próprio perfil" 
   ON public.profiles FOR UPDATE 
   USING (auth.uid() = id);
@@ -30,13 +37,14 @@ CREATE POLICY "Usuários podem atualizar seu próprio perfil"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, subscription_status, trial_ends_at)
+  INSERT INTO public.profiles (id, email, full_name, subscription_status, trial_ends_at, savings_goal)
   VALUES (
     new.id,
     new.email,
     COALESCE(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
     'trial',
-    (timezone('utc'::text, now()) + INTERVAL '7 days')
+    (timezone('utc'::text, now()) + INTERVAL '7 days'),
+    0
   );
   RETURN NEW;
 END;

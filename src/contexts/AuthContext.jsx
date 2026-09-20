@@ -163,6 +163,40 @@ export const AuthProvider = ({ children }) => {
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   };
 
+  const updateProfile = async (updates) => {
+    if (!user) return { error: 'Usuário não autenticado' };
+
+    const updatedProfile = {
+      ...profile,
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    setProfile(updatedProfile);
+
+    if (isDemoMode || !supabase) {
+      localStorage.setItem(`finanzen_profile_${user.id}`, JSON.stringify(updatedProfile));
+      return { error: null };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: updates.full_name,
+          phone: updates.phone,
+          savings_goal: Number(updates.savings_goal) || 0,
+          settings: updates.settings || profile?.settings || {},
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      return { error };
+    } catch (err) {
+      console.error('Erro ao atualizar perfil no Supabase:', err);
+      return { error: err };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -173,6 +207,7 @@ export const AuthProvider = ({ children }) => {
         signUp,
         signIn,
         signOut,
+        updateProfile,
         isSubscriptionActive,
         getDaysRemainingInTrial,
       }}
