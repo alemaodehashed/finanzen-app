@@ -7,6 +7,7 @@ import { FinanceDashboard } from './components/Finance/FinanceDashboard';
 import { FinanceFormModal } from './components/Finance/FinanceFormModal';
 import { AuthModal } from './components/Auth/AuthModal';
 import { UserSettingsModal } from './components/Settings/UserSettingsModal';
+import { AdminPanelModal } from './components/Admin/AdminPanelModal';
 import { exportToCSV, printReport } from './utils/exportData';
 
 const MainApp = () => {
@@ -16,6 +17,7 @@ const MainApp = () => {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
 
   const handleExportCSV = () => {
     exportToCSV(records, `finanzen_relatorio_${new Date().toISOString().split('T')[0]}.csv`);
@@ -26,6 +28,7 @@ const MainApp = () => {
       <Navbar
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
+        onOpenAdminPanel={() => setIsAdminPanelOpen(true)}
         onExportCSV={handleExportCSV}
         onPrint={printReport}
       />
@@ -53,6 +56,12 @@ const MainApp = () => {
         <UserSettingsModal
           isOpen={isSettingsModalOpen}
           onClose={() => setIsSettingsModalOpen(false)}
+        />
+
+        {/* Painel do Dono - Gestão de Clientes e Logins */}
+        <AdminPanelModal
+          isOpen={isAdminPanelOpen}
+          onClose={() => setIsAdminPanelOpen(false)}
         />
       </main>
 

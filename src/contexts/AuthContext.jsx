@@ -197,17 +197,88 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const isAdmin = Boolean(profile?.is_admin || user?.email === 'adam.tv2004@gmail.com' || isDemoMode);
+
+  const fetchAllProfiles = async () => {
+    if (isDemoMode || !supabase) {
+      return [
+        {
+          id: 'demo_user_001',
+          email: 'demo@finanzen.com',
+          full_name: 'Usuário Demonstração',
+          subscription_status: 'trial',
+          trial_ends_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+          phone: '(11) 98765-4321',
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: 'client_002',
+          email: 'carlos.silva@gmail.com',
+          full_name: 'Carlos Silva',
+          subscription_status: 'lifetime',
+          phone: '(19) 99123-4567',
+          created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+        {
+          id: 'client_003',
+          email: 'maria.souza@hotmail.com',
+          full_name: 'Maria Souza',
+          subscription_status: 'expired',
+          phone: '(21) 97788-9900',
+          created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+      ];
+    }
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Erro ao buscar todos os perfis:', err);
+      return [];
+    }
+  };
+
+  const updateUserStatus = async (targetUserId, newStatus, extraData = {}) => {
+    if (isDemoMode || !supabase) {
+      return { success: true };
+    }
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          subscription_status: newStatus,
+          ...extraData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', targetUserId);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      console.error('Erro ao atualizar status do cliente:', err);
+      return { success: false, error };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user,
         profile,
+        isAdmin,
         loading,
         isDemoMode,
         signUp,
         signIn,
         signOut,
         updateProfile,
+        fetchAllProfiles,
+        updateUserStatus,
         isSubscriptionActive,
         getDaysRemainingInTrial,
       }}

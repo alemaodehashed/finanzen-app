@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Sparkles, Download, LogOut, Smartphone, CheckCircle, Crown, Settings } from 'lucide-react';
+import { Sparkles, Download, LogOut, Smartphone, CheckCircle, Crown, Settings, Shield } from 'lucide-react';
 
-export const Navbar = ({ onOpenAuth, onOpenSettings, onExportCSV, onPrint }) => {
-  const { user, profile, signOut, isDemoMode, getDaysRemainingInTrial } = useAuth();
+export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onExportCSV, onPrint }) => {
+  const { user, profile, isAdmin, signOut, isDemoMode, getDaysRemainingInTrial } = useAuth();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
@@ -118,6 +118,28 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onExportCSV, onPrint }) => 
             <Download size={15} />
             <span className="hide-mobile">Exportar CSV</span>
           </button>
+
+          {/* Botão Painel Admin (Visível apenas para o Dono) */}
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={onOpenAdminPanel}
+              className="btn btn-sm"
+              style={{
+                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                color: '#000',
+                fontWeight: 800,
+                boxShadow: '0 2px 10px rgba(245, 158, 11, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+              title="Painel de Administração de Clientes"
+            >
+              <Shield size={14} />
+              <span>Painel Admin</span>
+            </button>
+          )}
 
           {/* Usuário / Login */}
           {user ? (
