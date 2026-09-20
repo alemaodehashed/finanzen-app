@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Sparkles, Crown, Zap, CheckCircle2 } from 'lucide-react';
 
-export const PaywallBanner = ({ paymentUrl = 'https://wa.me/?text=Quero%20ativar%20o%20FinanZen' }) => {
+export const PaywallBanner = ({ paymentUrl = 'https://wa.me/?text=Quero%20ativar%20o%20FinanTEMP\'s' }) => {
   const { profile, isSubscriptionActive, getDaysRemainingInTrial } = useAuth();
 
   const isPro = profile?.subscription_status === 'active' || profile?.subscription_status === 'lifetime';

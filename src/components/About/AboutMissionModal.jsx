@@ -56,7 +56,7 @@ export const AboutMissionModal = ({ isOpen, onClose }) => {
         </div>
 
         <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>
-          A Missão por trás do FinanZen
+          A Missão por trás do FinanTEMP's
         </h2>
         <div style={{ fontSize: '0.86rem', color: '#10b981', fontWeight: 600, marginTop: '2px', marginBottom: '18px' }}>
           Idealizado pelo 3º Sgt Temporário Lucas de Carvalho Adam
@@ -81,7 +81,7 @@ export const AboutMissionModal = ({ isOpen, onClose }) => {
           </p>
 
           <p style={{ marginBottom: '12px' }}>
-            O <strong>FinanZen</strong> foi forjado justamente para preencher essa lacuna — trazendo um painel simples, blindado e eficiente para que cada militar assuma o <strong>comando total do seu dinheiro</strong>, corte desperdícios e construa uma reserva sólida.
+            O <strong>FinanTEMP's</strong> foi forjado justamente para preencher essa lacuna — trazendo um painel simples, blindado e eficiente para que cada militar assuma o <strong>comando total do seu dinheiro</strong>, corte desperdícios e construa uma reserva sólida.
           </p>
 
           <div

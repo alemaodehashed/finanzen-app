@@ -74,7 +74,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
             FORJADO NO 13º BATALHÃO DE INFANTARIA BLINDADO
           </div>
           <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#fff' }}>
-            {isRegister ? 'Criar sua Conta' : 'Acesse o FinanZen'}
+            {isRegister ? 'Criar sua Conta' : 'Acesse o FinanTEMP\'s'}
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>
             {isRegister

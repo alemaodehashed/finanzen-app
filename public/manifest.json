@@ -1,7 +1,7 @@
 {
-  "name": "FinanZen - Finanças Pessoais",
-  "short_name": "FinanZen",
-  "description": "Controle financeiro pessoal e familiar simples, rápido e inteligente.",
+  "name": "FinanTEMP's - Controle Financeiro",
+  "short_name": "FinanTEMP's",
+  "description": "Controle financeiro e disciplina pessoal para militares e famílias.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",

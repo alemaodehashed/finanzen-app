@@ -46,12 +46,12 @@ export const AuthProvider = ({ children }) => {
       // Modo Demo Ativado para testes imediatos
       const demoUser = {
         id: 'demo_user_001',
-        email: 'demo@finanzen.com',
+        email: 'demo@finantemps.com',
         user_metadata: { full_name: 'Usuário Demonstração' },
       };
       const demoProfile = {
         id: 'demo_user_001',
-        email: 'demo@finanzen.com',
+        email: 'demo@finantemps.com',
         full_name: 'Usuário Demonstração',
         subscription_status: 'trial',
         trial_ends_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
@@ -204,7 +204,7 @@ export const AuthProvider = ({ children }) => {
       return [
         {
           id: 'demo_user_001',
-          email: 'demo@finanzen.com',
+          email: 'demo@finantemps.com',
           full_name: 'Usuário Demonstração',
           subscription_status: 'trial',
           trial_ends_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),

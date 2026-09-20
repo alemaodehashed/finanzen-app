@@ -1,6 +1,6 @@
-# 💎 FinanZen - Aplicativo de Gestão Financeira Pessoal & Familiar (SaaS / PWA)
+# 🔰 FinanTEMP's - Controle Financeiro Militar & Pessoal (SaaS / PWA)
 
-Aplicativo completo de controle financeiro pronto para comercialização (venda de acessos/assinaturas) com autenticação segura individual e instalação no celular (PWA).
+Aplicativo completo de controle financeiro forjado pelo 3º Sgt Temporário Lucas de Carvalho Adam (13º BIB), pronto para comercialização com autenticação segura individual e instalação no celular (PWA).
 
 ---
 

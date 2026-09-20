@@ -130,7 +130,7 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                 Painel do Dono • Gestão de Clientes
               </h2>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>
-                Controle acessos, libere planos vitalícios e administre os logins do FinanZen
+                Controle acessos, libere planos vitalícios e administre os logins do FinanTEMP's
               </p>
             </div>
           </div>
@@ -255,7 +255,7 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                 const whatsappUrl = cleanPhone
                   ? `https://wa.me/55${cleanPhone}?text=Ol%C3%A1%20${encodeURIComponent(
                       client.full_name || 'Amigo'
-                    )}!%20Tudo%20bem?%20Sou%20do%20FinanZen`
+                    )}!%20Tudo%20bem?%20Sou%20do%20FinanTEMP%27s`
                   : null;
 
                 return (

@@ -22,7 +22,7 @@ const MainApp = () => {
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
 
   const handleExportCSV = () => {
-    exportToCSV(records, `finanzen_relatorio_${new Date().toISOString().split('T')[0]}.csv`);
+    exportToCSV(records, `finantemps_relatorio_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   return (
@@ -84,7 +84,7 @@ const MainApp = () => {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span>FinanZen © {new Date().getFullYear()}</span>
+          <span>FinanTEMP's © {new Date().getFullYear()}</span>
           <span>•</span>
           <span>Criado pelo <strong>3º Sgt Temporário Lucas de Carvalho Adam (13º BIB)</strong></span>
           <span>•</span>

@@ -77,7 +77,7 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <h1 style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.5px', color: '#fff', margin: 0 }}>
-                Finan<span style={{ color: 'var(--primary)' }}>Zen</span>
+                Finan<span style={{ color: 'var(--primary)' }}>TEMP's</span>
               </h1>
               {isPro ? (
                 <span className="badge badge-pro">
