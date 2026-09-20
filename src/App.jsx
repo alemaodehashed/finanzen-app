@@ -8,6 +8,7 @@ import { FinanceFormModal } from './components/Finance/FinanceFormModal';
 import { AuthModal } from './components/Auth/AuthModal';
 import { UserSettingsModal } from './components/Settings/UserSettingsModal';
 import { AdminPanelModal } from './components/Admin/AdminPanelModal';
+import { AboutMissionModal } from './components/About/AboutMissionModal';
 import { exportToCSV, printReport } from './utils/exportData';
 
 const MainApp = () => {
@@ -18,6 +19,7 @@ const MainApp = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
 
   const handleExportCSV = () => {
     exportToCSV(records, `finanzen_relatorio_${new Date().toISOString().split('T')[0]}.csv`);
@@ -29,6 +31,7 @@ const MainApp = () => {
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
         onOpenAdminPanel={() => setIsAdminPanelOpen(true)}
+        onOpenAbout={() => setIsAboutModalOpen(true)}
         onExportCSV={handleExportCSV}
         onPrint={printReport}
       />
@@ -63,6 +66,12 @@ const MainApp = () => {
           isOpen={isAdminPanelOpen}
           onClose={() => setIsAdminPanelOpen(false)}
         />
+
+        {/* Modal de História e Missão do 3º Sgt Adam (13º BIB) */}
+        <AboutMissionModal
+          isOpen={isAboutModalOpen}
+          onClose={() => setIsAboutModalOpen(false)}
+        />
       </main>
 
       <footer
@@ -74,7 +83,27 @@ const MainApp = () => {
           borderTop: '1px solid var(--border-color)',
         }}
       >
-        FinanZen © {new Date().getFullYear()} • Controle Financeiro Pessoal & Familiar • Seguro e Privado
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span>FinanZen © {new Date().getFullYear()}</span>
+          <span>•</span>
+          <span>Criado pelo <strong>3º Sgt Temporário Lucas de Carvalho Adam (13º BIB)</strong></span>
+          <span>•</span>
+          <button
+            type="button"
+            onClick={() => setIsAboutModalOpen(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--primary)',
+              fontWeight: 700,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              padding: 0,
+            }}
+          >
+            Conheça a Missão
+          </button>
+        </div>
       </footer>
     </div>
   );

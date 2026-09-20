@@ -55,28 +55,31 @@ export const AuthModal = ({ isOpen, onClose }) => {
     <div className="modal-overlay">
       <div className="modal-content" style={{ padding: '32px 28px' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div
-            style={{
-              width: '54px',
-              height: '54px',
-              margin: '0 auto 12px',
-              borderRadius: '16px',
-              background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 8px 20px rgba(16, 185, 129, 0.3)',
-            }}
-          >
-            <Sparkles size={28} color="#fff" />
+          <div style={{ margin: '0 auto 10px', display: 'inline-block' }}>
+            <img
+              src="/logo.png"
+              alt="Divisa 3º Sgt Infantaria 13º BIB"
+              style={{
+                width: '68px',
+                height: 'auto',
+                borderRadius: '8px',
+                border: '2px solid rgba(16, 185, 129, 0.4)',
+                background: '#1a3323',
+                padding: '4px',
+                boxShadow: '0 6px 18px rgba(16, 185, 129, 0.35)',
+              }}
+            />
+          </div>
+          <div style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 800, letterSpacing: '0.5px', marginBottom: '4px' }}>
+            FORJADO NO 13º BATALHÃO DE INFANTARIA BLINDADO
           </div>
           <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#fff' }}>
             {isRegister ? 'Criar sua Conta' : 'Acesse o FinanZen'}
           </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: '4px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>
             {isRegister
-              ? 'Comece agora com 7 dias grátis de acesso completo'
-              : 'Seu controle financeiro pessoal simples e inteligente'}
+              ? 'Controle financeiro e disciplina para você e sua família (7 dias grátis)'
+              : 'Assuma o comando total do seu dinheiro'}
           </p>
         </div>
 

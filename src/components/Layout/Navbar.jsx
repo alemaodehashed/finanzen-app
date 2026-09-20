@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Sparkles, Download, LogOut, Smartphone, CheckCircle, Crown, Settings, Shield } from 'lucide-react';
 
-export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onExportCSV, onPrint }) => {
+export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbout, onExportCSV, onPrint }) => {
   const { user, profile, isAdmin, signOut, isDemoMode, getDaysRemainingInTrial } = useAuth();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -57,22 +57,23 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onExportC
           gap: '12px',
         }}
       >
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div
+        {/* Logo com a Divisa Oficial do 3º Sgt e Link da Missão */}
+        <div
+          onClick={onOpenAbout}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+          title="Clique para conhecer a história e missão do aplicativo"
+        >
+          <img
+            src="/logo.png"
+            alt="Divisa 3º Sgt Infantaria 13º BIB"
             style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+              width: '38px',
+              height: '42px',
+              objectFit: 'contain',
+              borderRadius: '6px',
+              filter: 'drop-shadow(0 2px 8px rgba(16, 185, 129, 0.35))',
             }}
-          >
-            <Sparkles size={20} color="#fff" />
-          </div>
+          />
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <h1 style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.5px', color: '#fff', margin: 0 }}>
@@ -88,8 +89,8 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onExportC
                 </span>
               )}
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', fontWeight: 500 }}>
-              Finanças Pessoais & Familiares
+            <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>
+              Por 3º Sgt Adam • 13º BIB <span style={{ color: 'var(--primary)', fontWeight: 700, marginLeft: '4px' }}>★ Missão</span>
             </div>
           </div>
         </div>
