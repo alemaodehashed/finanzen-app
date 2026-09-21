@@ -4,12 +4,9 @@ import { formatCPF } from '../../utils/formatters';
 import {
   Clock,
   ShieldAlert,
-  MessageCircle,
   RefreshCw,
   LogOut,
-  CheckCircle2,
   Instagram,
-  ArrowRight,
   ExternalLink
 } from 'lucide-react';
 
@@ -37,12 +34,6 @@ export const PendingApprovalView = () => {
 
   const cleanName = profile?.full_name || user?.user_metadata?.full_name || 'Usuário';
   const displayCpf = user?.cpf || profile?.cpf ? formatCPF(user?.cpf || profile?.cpf) : '';
-  const adminPhone = '5542999757796';
-
-  const whatsappMessage = encodeURIComponent(
-    `Olá Adam! Já segui você no Instagram (@adam404found) e acabei de cadastrar minha conta no FinanTEMP's (${cleanName}${displayCpf ? ` - CPF: ${displayCpf}` : ''}). Pode liberar meu acesso no painel?`
-  );
-  const whatsappUrl = `https://wa.me/${adminPhone}?text=${whatsappMessage}`;
 
   return (
     <div
@@ -104,10 +95,10 @@ export const PendingApprovalView = () => {
       <p style={{ color: 'var(--text-muted)', fontSize: '0.90rem', lineHeight: '1.5', marginBottom: '20px' }}>
         Olá, <strong style={{ color: '#fff' }}>{cleanName}</strong>
         {displayCpf && <span> (CPF: <strong style={{ color: 'var(--primary)' }}>{displayCpf}</strong>)</span>}.
-        Para liberar seu acesso gratuito, siga as 2 etapas abaixo:
+        Para liberar seu acesso gratuito, basta seguir o criador no Instagram abaixo:
       </p>
 
-      {/* Caixa de Passos Obrigatórios */}
+      {/* Caixa de Requisito Único - Instagram */}
       <div
         style={{
           background: 'rgba(255, 255, 255, 0.03)',
@@ -119,20 +110,20 @@ export const PendingApprovalView = () => {
         }}
       >
         <div style={{ fontWeight: 800, color: '#e2e8f0', marginBottom: '12px', fontSize: '0.92rem' }}>
-          📋 Requisitos para Liberação:
+          📋 Requisito para Liberação:
         </div>
 
-        {/* Passo 1 - Instagram */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '14px' }}>
+        {/* Passo Único - Instagram */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
           <div
             style={{
-              width: '24px',
-              height: '24px',
+              width: '28px',
+              height: '28px',
               borderRadius: '50%',
               background: followedInstagram ? '#10b981' : '#e1306c',
               color: '#fff',
               fontWeight: 800,
-              fontSize: '0.78rem',
+              fontSize: '0.82rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -143,41 +134,11 @@ export const PendingApprovalView = () => {
             {followedInstagram ? '✓' : '1'}
           </div>
           <div>
-            <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.88rem' }}>
+            <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.9rem' }}>
               Seguir o perfil oficial no Instagram
             </div>
-            <div style={{ fontSize: '0.80rem', color: 'var(--text-dim)', marginTop: '2px' }}>
-              Siga o criador do projeto: <strong style={{ color: '#e1306c' }}>@adam404found</strong>
-            </div>
-          </div>
-        </div>
-
-        {/* Passo 2 - WhatsApp */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-          <div
-            style={{
-              width: '24px',
-              height: '24px',
-              borderRadius: '50%',
-              background: '#25D366',
-              color: '#000',
-              fontWeight: 800,
-              fontSize: '0.78rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              marginTop: '2px',
-            }}
-          >
-            2
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.88rem' }}>
-              Avisar o 3º Sgt Adam no WhatsApp
-            </div>
-            <div style={{ fontSize: '0.80rem', color: 'var(--text-dim)', marginTop: '2px' }}>
-              Envie uma mensagem avisando que seguiu para ele ativar seu acesso na hora!
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-dim)', marginTop: '2px' }}>
+              Siga o criador do projeto <strong style={{ color: '#e1306c' }}>@adam404found</strong> para ter seu acesso liberado.
             </div>
           </div>
         </div>
@@ -201,7 +162,7 @@ export const PendingApprovalView = () => {
 
       {/* Botões de Ação */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {/* Botão 1: Instagram Oficial */}
+        {/* Botão: Instagram Oficial */}
         <button
           type="button"
           onClick={handleFollowClick}
@@ -221,32 +182,9 @@ export const PendingApprovalView = () => {
           }}
         >
           <Instagram size={19} />
-          <span>1º Seguir @adam404found no Instagram</span>
+          <span>{followedInstagram ? '✓ Seguir @adam404found no Instagram' : 'Seguir @adam404found no Instagram'}</span>
           <ExternalLink size={15} />
         </button>
-
-        {/* Botão 2: WhatsApp do Administrador */}
-        <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn"
-          style={{
-            background: '#25D366',
-            color: '#000',
-            fontWeight: 800,
-            padding: '13px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            boxShadow: '0 4px 14px rgba(37, 211, 102, 0.3)',
-            textDecoration: 'none',
-          }}
-        >
-          <MessageCircle size={19} />
-          <span>2º Avisar o Administrador no WhatsApp</span>
-        </a>
 
         {/* Botão 3: Verificar Status */}
         <button
