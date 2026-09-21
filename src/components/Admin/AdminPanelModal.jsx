@@ -5,14 +5,15 @@ import {
   X,
   Shield,
   Users,
-  Crown,
   Search,
   CheckCircle2,
   Clock,
   Ban,
   MessageCircle,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  UserCheck,
+  Check
 } from 'lucide-react';
 
 export const AdminPanelModal = ({ isOpen, onClose }) => {
@@ -38,40 +39,41 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  const handleSetLifetime = async (userId, userName) => {
-    if (confirm(`Confirmar liberação de ACESSO VITALÍCIO para "${userName}"?`)) {
-      const res = await updateUserStatus(userId, 'lifetime');
+  // Autorizar / Liberar acesso do usuário
+  const handleApproveUser = async (userId, userName) => {
+    const res = await updateUserStatus(userId, 'active');
+    if (res.success) {
+      setActionSuccess(`Acesso AUTORIZADO com sucesso para ${userName}!`);
+      setProfiles((prev) =>
+        prev.map((p) => (p.id === userId ? { ...p, subscription_status: 'active' } : p))
+      );
+      setTimeout(() => setActionSuccess(''), 3000);
+    }
+  };
+
+  // Revogar / Suspender acesso do usuário
+  const handleRevokeUser = async (userId, userName) => {
+    if (confirm(`Deseja SUSPENDER a autorização de "${userName}"? Ele voltará para o status pendente.`)) {
+      const res = await updateUserStatus(userId, 'pending');
       if (res.success) {
-        setActionSuccess(`Acesso vitalício ativado para ${userName}!`);
+        setActionSuccess(`Acesso de ${userName} suspenso (retornado para pendente).`);
         setProfiles((prev) =>
-          prev.map((p) => (p.id === userId ? { ...p, subscription_status: 'lifetime' } : p))
+          prev.map((p) => (p.id === userId ? { ...p, subscription_status: 'pending' } : p))
         );
         setTimeout(() => setActionSuccess(''), 3000);
       }
     }
   };
 
-  const handleExtendTrial = async (userId, userName) => {
-    const newDate = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString();
-    const res = await updateUserStatus(userId, 'trial', { trial_ends_at: newDate });
-    if (res.success) {
-      setActionSuccess(`+15 dias de teste grátis concedidos a ${userName}!`);
-      setProfiles((prev) =>
-        prev.map((p) =>
-          p.id === userId ? { ...p, subscription_status: 'trial', trial_ends_at: newDate } : p
-        )
-      );
-      setTimeout(() => setActionSuccess(''), 3000);
-    }
-  };
-
-  const handleBlockUser = async (userId, userName) => {
-    if (confirm(`Deseja BLOQUEAR / EXPIRAR o acesso de "${userName}"?`)) {
-      const res = await updateUserStatus(userId, 'expired');
+  // Alternar administrador
+  const handleToggleAdmin = async (userId, userName, currentIsAdmin) => {
+    const actionText = currentIsAdmin ? 'REMOVER status de administrador' : 'TORNAR ADMINISTRADOR';
+    if (confirm(`Deseja ${actionText} para "${userName}"?`)) {
+      const res = await updateUserStatus(userId, 'active', { is_admin: !currentIsAdmin });
       if (res.success) {
-        setActionSuccess(`Acesso de ${userName} expirado com sucesso.`);
+        setActionSuccess(`Privilégios de ${userName} atualizados com sucesso!`);
         setProfiles((prev) =>
-          prev.map((p) => (p.id === userId ? { ...p, subscription_status: 'expired' } : p))
+          prev.map((p) => (p.id === userId ? { ...p, is_admin: !currentIsAdmin } : p))
         );
         setTimeout(() => setActionSuccess(''), 3000);
       }
@@ -85,22 +87,25 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
       (p.phone || '').includes(searchTerm);
 
     if (statusFilter === 'todos') return matchSearch;
-    return matchSearch && p.subscription_status === statusFilter;
+    if (statusFilter === 'pending') return matchSearch && (p.subscription_status === 'pending' || !p.subscription_status);
+    if (statusFilter === 'active') return matchSearch && p.subscription_status === 'active';
+    if (statusFilter === 'admin') return matchSearch && p.is_admin;
+    return matchSearch;
   });
 
-  const totalClients = profiles.length;
-  const totalLifetime = profiles.filter(
-    (p) => p.subscription_status === 'lifetime' || p.subscription_status === 'active'
+  const totalUsers = profiles.length;
+  const totalPending = profiles.filter(
+    (p) => p.subscription_status === 'pending' || (!p.subscription_status && !p.is_admin)
   ).length;
-  const totalTrial = profiles.filter((p) => p.subscription_status === 'trial').length;
-  const totalExpired = profiles.filter((p) => p.subscription_status === 'expired').length;
+  const totalActive = profiles.filter((p) => p.subscription_status === 'active').length;
+  const totalAdmins = profiles.filter((p) => p.is_admin).length;
 
   return (
     <div className="modal-overlay">
       <div
         className="modal-content"
         style={{
-          maxWidth: '900px',
+          maxWidth: '920px',
           width: '95%',
           maxHeight: '92vh',
           padding: '24px 28px',
@@ -113,8 +118,8 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div
               style={{
-                width: '40px',
-                height: '40px',
+                width: '42px',
+                height: '42px',
                 borderRadius: '12px',
                 background: 'linear-gradient(135deg, #f59e0b, #d97706)',
                 display: 'flex',
@@ -123,14 +128,14 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                 boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
               }}
             >
-              <Shield size={22} color="#fff" />
+              <Shield size={24} color="#fff" />
             </div>
             <div>
               <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff' }}>
-                Painel do Dono • Gestão de Clientes
+                Painel do Dono • Autorização de Cadastros
               </h2>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>
-                Controle acessos, libere planos vitalícios e administre os logins do FinanTEMP's
+                Autorize e gerencie quem pode usar o FinanTEMP's
               </p>
             </div>
           </div>
@@ -149,7 +154,7 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Métricas do Negócio */}
+        {/* Métricas com destaque para pendentes */}
         <div
           style={{
             display: 'grid',
@@ -158,24 +163,58 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
             marginBottom: '20px',
           }}
         >
-          <div className="glass-card" style={{ padding: '14px', borderLeft: '4px solid #06b6d4' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>TOTAL CLIENTES</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff' }}>{totalClients}</div>
+          {/* Card Pendentes */}
+          <div
+            onClick={() => setStatusFilter('pending')}
+            className="glass-card"
+            style={{
+              padding: '14px',
+              borderLeft: '4px solid #f59e0b',
+              cursor: 'pointer',
+              background: totalPending > 0 ? 'rgba(245, 158, 11, 0.12)' : undefined,
+            }}
+          >
+            <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 800, letterSpacing: '0.5px' }}>
+              AGUARDANDO APROVAÇÃO
+            </div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {totalPending}
+              {totalPending > 0 && (
+                <span style={{ fontSize: '0.68rem', background: '#f59e0b', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                  NOVO
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="glass-card" style={{ padding: '14px', borderLeft: '4px solid #10b981' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>VITALÍCIO / PAGOS</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981' }}>{totalLifetime}</div>
+          {/* Card Ativos */}
+          <div
+            onClick={() => setStatusFilter('active')}
+            className="glass-card"
+            style={{ padding: '14px', borderLeft: '4px solid #10b981', cursor: 'pointer' }}
+          >
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>AUTORIZADOS / ATIVOS</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981' }}>{totalActive}</div>
           </div>
 
-          <div className="glass-card" style={{ padding: '14px', borderLeft: '4px solid #f59e0b' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>TESTANDO (TRIAL)</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f59e0b' }}>{totalTrial}</div>
+          {/* Card Admins */}
+          <div
+            onClick={() => setStatusFilter('admin')}
+            className="glass-card"
+            style={{ padding: '14px', borderLeft: '4px solid #06b6d4', cursor: 'pointer' }}
+          >
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>ADMINISTRADORES</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#06b6d4' }}>{totalAdmins}</div>
           </div>
 
-          <div className="glass-card" style={{ padding: '14px', borderLeft: '4px solid #f43f5e' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>EXPIRADOS / RECUPERAR</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f43f5e' }}>{totalExpired}</div>
+          {/* Card Total */}
+          <div
+            onClick={() => setStatusFilter('todos')}
+            className="glass-card"
+            style={{ padding: '14px', borderLeft: '4px solid #8b5cf6', cursor: 'pointer' }}
+          >
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>TOTAL DE CONTAS</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff' }}>{totalUsers}</div>
           </div>
         </div>
 
@@ -222,10 +261,10 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <option value="todos">Todos os Status</option>
-            <option value="lifetime">Vitalício / Pagos</option>
-            <option value="trial">Em Teste Grátis</option>
-            <option value="expired">Expirados</option>
+            <option value="todos">Todos os Usuários ({totalUsers})</option>
+            <option value="pending">⏳ Aguardando Aprovação ({totalPending})</option>
+            <option value="active">✓ Autorizados / Ativos ({totalActive})</option>
+            <option value="admin">★ Administradores ({totalAdmins})</option>
           </select>
 
           <button onClick={loadData} className="btn btn-secondary btn-sm" title="Recarregar dados">
@@ -233,37 +272,37 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Tabela de Usuários */}
+        {/* Lista de Usuários */}
         <div style={{ flex: 1, overflowY: 'auto', minHeight: '260px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>
-              Carregando clientes...
+              Carregando usuários...
             </div>
           ) : filteredProfiles.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>
-              Nenhum cliente encontrado com esse filtro.
+              Nenhum usuário encontrado com esse filtro.
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {filteredProfiles.map((client) => {
-                const isLifetime =
-                  client.subscription_status === 'lifetime' || client.subscription_status === 'active';
-                const isTrial = client.subscription_status === 'trial';
-                const isExpired = client.subscription_status === 'expired';
+                const isPending = client.subscription_status === 'pending' || (!client.subscription_status && !client.is_admin);
+                const isUserActive = client.subscription_status === 'active' || client.is_admin;
 
                 const cleanPhone = (client.phone || '').replace(/\D/g, '');
+                const whatsappText = isPending
+                  ? `Olá ${client.full_name || 'Amigo'}! Vi que você se cadastrou no FinanTEMP's. Já liberei seu acesso!`
+                  : `Olá ${client.full_name || 'Amigo'}! Tudo bem? Sou o administrador do FinanTEMP's.`;
+
                 const whatsappUrl = cleanPhone
-                  ? `https://wa.me/55${cleanPhone}?text=Ol%C3%A1%20${encodeURIComponent(
-                      client.full_name || 'Amigo'
-                    )}!%20Tudo%20bem?%20Sou%20do%20FinanTEMP%27s`
+                  ? `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(whatsappText)}`
                   : null;
 
                 return (
                   <div
                     key={client.id}
                     style={{
-                      background: 'rgba(255, 255, 255, 0.03)',
-                      border: '1px solid var(--border-color)',
+                      background: isPending ? 'rgba(245, 158, 11, 0.06)' : 'rgba(255, 255, 255, 0.03)',
+                      border: isPending ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid var(--border-color)',
                       borderRadius: 'var(--radius-md)',
                       padding: '12px 16px',
                       display: 'flex',
@@ -273,38 +312,51 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                       gap: '12px',
                     }}
                   >
-                    {/* Dados do Cliente */}
+                    {/* Dados do Usuário */}
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#fff' }}>
                           {client.full_name || 'Sem nome'}
                         </span>
+
                         {client.is_admin && (
-                          <span style={{ fontSize: '0.7rem', background: '#f59e0b', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                          <span style={{ fontSize: '0.7rem', background: '#06b6d4', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
                             ADMIN
                           </span>
                         )}
-                        <span
-                          className={
-                            isLifetime
-                              ? 'badge badge-pro'
-                              : isTrial
-                              ? 'badge badge-trial'
-                              : 'badge badge-expense'
-                          }
-                        >
-                          {isLifetime ? 'VITALÍCIO' : isTrial ? 'TESTE (7D)' : 'EXPIRADO'}
-                        </span>
+
+                        {isPending ? (
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              background: 'rgba(245, 158, 11, 0.2)',
+                              color: '#f59e0b',
+                              border: '1px solid rgba(245, 158, 11, 0.4)',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontWeight: 800,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                          >
+                            <Clock size={11} /> AGUARDANDO LIBERAÇÃO
+                          </span>
+                        ) : (
+                          <span className="badge badge-income" style={{ fontSize: '0.72rem' }}>
+                            ✓ AUTORIZADO
+                          </span>
+                        )}
                       </div>
 
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '3px' }}>
-                        {client.email} {client.phone ? `• ${client.phone}` : ''} • Cadastro: {formatDate(client.created_at?.split('T')[0])}
+                        <strong style={{ color: '#e2e8f0' }}>{client.email}</strong> {client.phone ? `• ${client.phone}` : ''} • Cadastro: {formatDate(client.created_at?.split('T')[0])}
                       </div>
                     </div>
 
-                    {/* Ações Rápidas do Dono */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {/* Botão WhatsApp */}
+                    {/* Ações */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      {/* Botão de WhatsApp */}
                       {whatsappUrl && (
                         <a
                           href={whatsappUrl}
@@ -312,52 +364,58 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                           rel="noopener noreferrer"
                           className="btn btn-secondary btn-sm"
                           style={{ color: '#25D366', borderColor: 'rgba(37, 211, 102, 0.3)' }}
-                          title="Conversar no WhatsApp"
+                          title="Avisar pelo WhatsApp"
                         >
                           <MessageCircle size={14} />
                         </a>
                       )}
 
-                      {/* Ativar Vitalício */}
-                      {!isLifetime && (
+                      {/* Botão de Autorizar Acesso (Se pendente) */}
+                      {isPending && (
                         <button
                           type="button"
-                          onClick={() => handleSetLifetime(client.id, client.full_name || client.email)}
+                          onClick={() => handleApproveUser(client.id, client.full_name || client.email)}
                           className="btn btn-sm"
                           style={{
                             background: 'linear-gradient(135deg, #10b981, #059669)',
                             color: '#fff',
-                            fontWeight: 700,
+                            fontWeight: 800,
+                            padding: '6px 14px',
+                            boxShadow: '0 2px 10px rgba(16, 185, 129, 0.4)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
                           }}
-                          title="Liberar Acesso Vitalício (Cliente Pagou)"
                         >
-                          <Crown size={13} /> Liberar Vitalício
+                          <Check size={14} />
+                          <span>Autorizar Acesso</span>
                         </button>
                       )}
 
-                      {/* Prorrogar Trial (+15 dias) */}
-                      {isTrial && (
+                      {/* Botão de Suspender / Revogar Acesso (Se ativo e não for admin dono) */}
+                      {isUserActive && !client.is_admin && (
                         <button
                           type="button"
-                          onClick={() => handleExtendTrial(client.id, client.full_name || client.email)}
+                          onClick={() => handleRevokeUser(client.id, client.full_name || client.email)}
                           className="btn btn-secondary btn-sm"
-                          title="Conceder +15 dias de teste grátis"
+                          style={{ color: '#f43f5e', borderColor: 'rgba(244, 63, 94, 0.3)' }}
+                          title="Suspender autorização do usuário"
                         >
-                          <Clock size={13} /> +15 Dias
+                          <Ban size={13} />
+                          <span className="hide-mobile">Suspender</span>
                         </button>
                       )}
 
-                      {/* Bloquear / Expirar */}
-                      {!isExpired && (
-                        <button
-                          type="button"
-                          onClick={() => handleBlockUser(client.id, client.full_name || client.email)}
-                          className="btn btn-danger btn-sm"
-                          title="Bloquear / Expirar Acesso"
-                        >
-                          <Ban size={13} /> Bloquear
-                        </button>
-                      )}
+                      {/* Alternar Admin */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAdmin(client.id, client.full_name || client.email, client.is_admin)}
+                        className="btn btn-secondary btn-sm"
+                        title={client.is_admin ? "Remover privilégio de Admin" : "Tornar Administrador"}
+                      >
+                        <UserCheck size={14} />
+                        <span className="hide-mobile">{client.is_admin ? 'Tirar Admin' : 'Dar Admin'}</span>
+                      </button>
                     </div>
                   </div>
                 );

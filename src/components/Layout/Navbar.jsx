@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Sparkles, Download, LogOut, Smartphone, CheckCircle, Crown, Settings, Shield } from 'lucide-react';
 
 export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbout, onExportCSV, onPrint }) => {
-  const { user, profile, isAdmin, signOut, isDemoMode, getDaysRemainingInTrial } = useAuth();
+  const { user, profile, isAdmin, signOut } = useAuth();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
@@ -29,9 +29,6 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
       alert('Para instalar no celular:\n- No iPhone: toque em Compartilhar e selecione "Adicionar à Tela de Início".\n- No Android: toque no menu (três pontinhos) e selecione "Instalar aplicativo".');
     }
   };
-
-  const daysLeft = getDaysRemainingInTrial();
-  const isPro = profile?.subscription_status === 'active' || profile?.subscription_status === 'lifetime';
 
   return (
     <header
@@ -79,15 +76,6 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
               <h1 style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.5px', color: '#fff', margin: 0 }}>
                 Finan<span style={{ color: 'var(--primary)' }}>TEMP's</span>
               </h1>
-              {isPro ? (
-                <span className="badge badge-pro">
-                  <Crown size={12} /> PRO
-                </span>
-              ) : (
-                <span className="badge badge-trial">
-                  ⏳ {daysLeft} dias de teste
-                </span>
-              )}
             </div>
             <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>
               Por 3º Sgt Adam • 13º BIB <span style={{ color: 'var(--primary)', fontWeight: 700, marginLeft: '4px' }}>★ Missão</span>
@@ -167,11 +155,12 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
                     width: '8px',
                     height: '8px',
                     borderRadius: '50%',
-                    background: 'var(--primary)',
+                    background: isAdmin ? '#f59e0b' : 'var(--primary)',
+                    boxShadow: isAdmin ? '0 0 8px #f59e0b' : 'none',
                   }}
                 />
-                <span style={{ color: 'var(--text-muted)', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {profile?.full_name || user.email}
+                <span style={{ color: isAdmin ? '#f59e0b' : 'var(--text-muted)', fontWeight: isAdmin ? 700 : 500, maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {isAdmin ? '👑 3º Sgt Adam' : (profile?.full_name || user.email)}
                 </span>
                 <Settings size={13} style={{ opacity: 0.7 }} />
               </button>
@@ -185,7 +174,7 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
               </button>
             </div>
           ) : (
-            <button onClick={onOpenAuth} className="btn btn-primary btn-sm">
+            <button onClick={() => onOpenAuth()} className="btn btn-primary btn-sm">
               Entrar / Criar Conta
             </button>
           )}

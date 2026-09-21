@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Shield, Award, Heart, Share2, CheckCircle2 } from 'lucide-react';
+import { X, ArrowLeft, Shield, Award, Heart, Share2, CheckCircle2 } from 'lucide-react';
 
 export const AboutMissionModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
@@ -15,6 +15,34 @@ export const AboutMissionModal = ({ isOpen, onClose }) => {
           position: 'relative',
         }}
       >
+        {/* Botão de Voltar (topo esquerdo) */}
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: '16px',
+            left: '16px',
+            background: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid var(--border-color)',
+            color: '#e2e8f0',
+            cursor: 'pointer',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '0.82rem',
+            fontWeight: 600,
+            transition: 'background 0.2s ease',
+          }}
+          title="Voltar"
+        >
+          <ArrowLeft size={16} />
+          <span>Voltar</span>
+        </button>
+
+        {/* Botão de Fechar (topo direito) */}
         <button
           type="button"
           onClick={onClose}

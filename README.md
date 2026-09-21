@@ -47,18 +47,11 @@ Para que cada cliente que comprar tenha sua própria conta com isolamento total 
 
 ---
 
-## 💰 Como Vender o Acesso aos Clientes
-
-Você pode vender esse aplicativo de duas formas:
-
-1. **Acesso Vitalício (Pagamento Único via PIX / Kiwify / Hotmart):**
-   - Exemplo: R$ 47,00 ou R$ 97,00.
-   - O cliente compra, cria a conta no app e você altera o status dele para `lifetime` na tabela `profiles` do Supabase com um clique.
-
-2. **Assinatura Mensal (Kiwify / Hotmart / Asaas):**
-   - Exemplo: R$ 14,90 / mês.
-   - O app já vem configurado com **7 dias de teste grátis (trial)** automáticos para todo novo usuário cadastrado!
-   - Quando o período acaba, o app exibe o banner de liberação de acesso.
+## 🌟 Acesso 100% Gratuito e Livre
+O FinanTEMP's é liberado para todos os usuários:
+- Sem planos vitalícios, mensais ou cobranças.
+- Sem limite de dias de teste (trial expirado).
+- Qualquer usuário cadastrado tem acesso completo a todas as ferramentas financeiras, gráficos, categorias e metas.
 
 ---
 

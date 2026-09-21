@@ -2,33 +2,46 @@ import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { FinanceProvider, useFinance } from './contexts/FinanceContext';
 import { Navbar } from './components/Layout/Navbar';
-import { PaywallBanner } from './components/Subscription/PaywallBanner';
 import { FinanceDashboard } from './components/Finance/FinanceDashboard';
 import { FinanceFormModal } from './components/Finance/FinanceFormModal';
 import { AuthModal } from './components/Auth/AuthModal';
 import { UserSettingsModal } from './components/Settings/UserSettingsModal';
 import { AdminPanelModal } from './components/Admin/AdminPanelModal';
 import { AboutMissionModal } from './components/About/AboutMissionModal';
+import { ContributeModal } from './components/Contribute/ContributeModal';
+import { PaywallBanner } from './components/Subscription/PaywallBanner';
+import { PendingApprovalView } from './components/Auth/PendingApprovalView';
 import { exportToCSV, printReport } from './utils/exportData';
 
 const MainApp = () => {
-  const { user, isSubscriptionActive } = useAuth();
+  const { user, isApproved } = useAuth();
   const { records } = useFinance();
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authInitialMode, setAuthInitialMode] = useState('login');
+  const [authInitialEmail, setAuthInitialEmail] = useState('');
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
+  const [isContributeModalOpen, setIsContributeModalOpen] = useState(false);
+
+  const handleOpenAuth = (initialMode = 'login') => {
+    setAuthInitialMode(initialMode === 'register' ? 'register' : 'login');
+    setAuthInitialEmail('');
+    setIsAuthModalOpen(true);
+  };
 
   const handleExportCSV = () => {
     exportToCSV(records, `finantemps_relatorio_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
+  const isUserPending = user && !isApproved();
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar
-        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenAuth={handleOpenAuth}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
         onOpenAdminPanel={() => setIsAdminPanelOpen(true)}
         onOpenAbout={() => setIsAboutModalOpen(true)}
@@ -37,11 +50,15 @@ const MainApp = () => {
       />
 
       <main className="app-container" style={{ flex: 1 }}>
-        {/* Banner de Teste Grátis / Assinatura */}
-        <PaywallBanner />
-
-        {/* Dashboard com Métricas e Lançamentos */}
-        <FinanceDashboard onOpenNewModal={() => setIsFormModalOpen(true)} />
+        {isUserPending ? (
+          <PendingApprovalView />
+        ) : (
+          <>
+            {/* Banner de Contribuição Voluntária */}
+            <PaywallBanner onOpenContribute={() => setIsContributeModalOpen(true)} />
+            <FinanceDashboard onOpenNewModal={() => setIsFormModalOpen(true)} />
+          </>
+        )}
 
         {/* Modal de Lançamento Financeiro */}
         <FinanceFormModal
@@ -52,6 +69,8 @@ const MainApp = () => {
         {/* Modal de Login e Cadastro */}
         <AuthModal
           isOpen={isAuthModalOpen}
+          initialMode={authInitialMode}
+          initialEmail={authInitialEmail}
           onClose={() => setIsAuthModalOpen(false)}
         />
 
@@ -71,6 +90,12 @@ const MainApp = () => {
         <AboutMissionModal
           isOpen={isAboutModalOpen}
           onClose={() => setIsAboutModalOpen(false)}
+        />
+
+        {/* Modal de Contribuição e Doação PIX */}
+        <ContributeModal
+          isOpen={isContributeModalOpen}
+          onClose={() => setIsContributeModalOpen(false)}
         />
       </main>
 
@@ -102,6 +127,22 @@ const MainApp = () => {
             }}
           >
             Conheça a Missão
+          </button>
+          <span>•</span>
+          <button
+            type="button"
+            onClick={() => setIsContributeModalOpen(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#10b981',
+              fontWeight: 700,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              padding: 0,
+            }}
+          >
+            💚 Contribua com o Projeto (PIX)
           </button>
         </div>
       </footer>

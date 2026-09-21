@@ -55,9 +55,6 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const daysLeft = getDaysRemainingInTrial();
-  const isPro = profile?.subscription_status === 'active' || profile?.subscription_status === 'lifetime';
-
   return (
     <div className="modal-overlay">
       <div className="modal-content" style={{ padding: '28px' }}>
@@ -96,40 +93,52 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Card do Plano do Usuário */}
-        <div
-          style={{
-            padding: '14px 16px',
-            borderRadius: 'var(--radius-md)',
-            background: isPro
-              ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.15))'
-              : 'rgba(245, 158, 11, 0.12)',
-            border: isPro
-              ? '1px solid rgba(139, 92, 246, 0.3)'
-              : '1px solid rgba(245, 158, 11, 0.3)',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Crown size={16} color={isPro ? '#a78bfa' : '#fbbf24'} />
-              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff' }}>
-                {isPro ? 'Plano Vitalício / Ativo' : 'Período de Teste Grátis'}
+        {/* Card de Acesso do Usuário */}
+        {(() => {
+          const isUserApproved = profile?.subscription_status === 'active' || profile?.is_admin || user?.email === 'adam.tv2004@gmail.com';
+          return (
+            <div
+              style={{
+                padding: '14px 16px',
+                borderRadius: 'var(--radius-md)',
+                background: isUserApproved
+                  ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.12))'
+                  : 'rgba(245, 158, 11, 0.12)',
+                border: isUserApproved
+                  ? '1px solid rgba(16, 185, 129, 0.3)'
+                  : '1px solid rgba(245, 158, 11, 0.35)',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle2 size={16} color={isUserApproved ? '#10b981' : '#f59e0b'} />
+                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff' }}>
+                    {isUserApproved ? 'Acesso Autorizado' : 'Aguardando Aprovação'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  {isUserApproved
+                    ? 'Acesso liberado pelo administrador para uso completo'
+                    : 'Aguardando liberação do administrador no painel'}
+                </div>
+              </div>
+              <span
+                className="badge badge-pro"
+                style={{
+                  background: isUserApproved ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                  color: isUserApproved ? '#10b981' : '#f59e0b',
+                  border: isUserApproved ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(245, 158, 11, 0.4)',
+                }}
+              >
+                {isUserApproved ? 'LIBERADO' : 'PENDENTE'}
               </span>
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-              {isPro
-                ? 'Acesso completo ilimitado a todas as ferramentas'
-                : `${daysLeft} dias restantes do seu teste gratuito`}
-            </div>
-          </div>
-          <span className={isPro ? 'badge badge-pro' : 'badge badge-trial'}>
-            {isPro ? 'PRO' : 'TRIAL'}
-          </span>
-        </div>
+          );
+        })()}
 
         {successMsg && (
           <div
