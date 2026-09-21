@@ -23,11 +23,37 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
       setDeferredPrompt(e);
     };
 
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, []);
 
-  const handleInstallClick = () => {
+  const handleInstallClick = async () => {
+    // 1. Se o navegador já capturou o evento de instalação (Chrome, Android, Edge, etc.), instala direto!
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setIsInstalled(true);
+          setDeferredPrompt(null);
+          return;
+        }
+      } catch (err) {
+        console.warn('Erro no prompt nativo:', err);
+      }
+    }
+
+    // 2. Se for Safari iOS ou se o navegador precisar de orientação manual, abre o modal
     setIsInstallModalOpen(true);
   };
 
