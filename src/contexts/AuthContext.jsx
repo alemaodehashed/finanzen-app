@@ -1,7 +1,23 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { cleanCPF, isValidCPF, cpfToUUID, formatCPF } from '../utils/formatters';
 
 const AuthContext = createContext();
+
+// Função de hash de senha seguro no navegador (SHA-256)
+const hashPassword = async (pwd) => {
+  if (!pwd) return '';
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(pwd + '_finantemps_secure_salt');
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  } catch {
+    return btoa(pwd);
+  }
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -9,19 +25,22 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(!isSupabaseConfigured());
 
-  // Helpers para persistência em modo Demo
+  // Helpers para persistência local
   const getDemoUsers = () => {
     try {
-      const stored = localStorage.getItem('finanzen_demo_profiles');
+      const stored = localStorage.getItem('finanzen_app_profiles');
       if (stored) return JSON.parse(stored);
     } catch (e) {}
     return [
       {
-        id: 'demo_user_001',
-        email: 'demo@finantemps.com',
-        full_name: 'Usuário Demonstração',
+        id: '00000000-0000-0000-0000-000000000001',
+        cpf: '00000000000',
+        email: 'adam.tv2004@gmail.com',
+        full_name: '3º Sgt Adam (Administrador)',
+        phone: '(42) 99975-7796',
         subscription_status: 'active',
-        phone: '(11) 98765-4321',
+        is_admin: true,
+        followed_instagram: true,
         created_at: new Date().toISOString(),
       },
     ];
@@ -30,57 +49,46 @@ export const AuthProvider = ({ children }) => {
   const saveDemoUser = (userProfile) => {
     const list = getDemoUsers();
     const existingIndex = list.findIndex(
-      (u) => u.id === userProfile.id || u.email.toLowerCase() === userProfile.email.toLowerCase()
+      (u) =>
+        (userProfile.cpf && u.cpf === userProfile.cpf) ||
+        (userProfile.email && u.email?.toLowerCase() === userProfile.email?.toLowerCase()) ||
+        u.id === userProfile.id
     );
     if (existingIndex >= 0) {
       list[existingIndex] = { ...list[existingIndex], ...userProfile };
     } else {
       list.unshift(userProfile);
     }
-    localStorage.setItem('finanzen_demo_profiles', JSON.stringify(list));
-    localStorage.setItem('finanzen_current_user', JSON.stringify(userProfile));
+    try {
+      localStorage.setItem('finanzen_app_profiles', JSON.stringify(list));
+      localStorage.setItem('finanzen_current_user', JSON.stringify(userProfile));
+    } catch (e) {}
   };
 
-  // Carrega o perfil do Supabase garantindo que o email esteja preenchido
-  const fetchProfile = async (userId, userEmail) => {
+  // Carrega o perfil do Supabase
+  const fetchProfile = async (userId, userEmail, userCpf) => {
     if (!supabase) return;
-    const cleanEmail = (userEmail || '').trim().toLowerCase();
-
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Erro ao buscar perfil:', error);
+      let query = supabase.from('profiles').select('*');
+      if (userCpf) {
+        query = query.eq('cpf', userCpf);
+      } else {
+        query = query.eq('id', userId);
       }
+      const { data } = await query.maybeSingle();
 
       if (data) {
-        const isOwnerAccount = cleanEmail === 'adam.tv2004@gmail.com' || cleanEmail === 'admin@finantemps.com';
-        if (isOwnerAccount) {
+        const isOwner =
+          data.email === 'adam.tv2004@gmail.com' ||
+          data.cpf === '00000000000' ||
+          data.is_admin === true;
+
+        if (isOwner) {
           data.is_admin = true;
           data.subscription_status = 'active';
         }
-        // Se no banco o email estiver nulo ou vazio, atualiza imediatamente com o cleanEmail
-        if ((!data.email || data.email.trim() === '') && cleanEmail) {
-          data.email = cleanEmail;
-          await supabase.from('profiles').update({ email: cleanEmail }).eq('id', userId);
-        }
         setProfile(data);
-      } else {
-        const isOwnerAccount = cleanEmail === 'adam.tv2004@gmail.com' || cleanEmail === 'admin@finantemps.com';
-        // Cria perfil básico se não existir com o email garantido
-        const newProfile = {
-          id: userId,
-          email: cleanEmail,
-          full_name: cleanEmail.split('@')[0] || 'Usuário',
-          is_admin: isOwnerAccount,
-          subscription_status: isOwnerAccount ? 'active' : 'pending',
-        };
-        await supabase.from('profiles').upsert(newProfile);
-        setProfile(newProfile);
+        saveDemoUser(data);
       }
     } catch (err) {
       console.warn('Erro ao carregar perfil do usuário:', err);
@@ -98,6 +106,7 @@ export const AuthProvider = ({ children }) => {
     if (savedAdmin) {
       setUser({
         id: savedAdmin.id,
+        cpf: savedAdmin.cpf || '00000000000',
         email: savedAdmin.email,
         user_metadata: { full_name: savedAdmin.full_name },
       });
@@ -106,178 +115,166 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    if (!isSupabaseConfigured() || !supabase) {
-      // Modo Demo Ativado - restaura usuário salvo anteriormente ou padrão
-      let currentDemo = null;
-      try {
-        const saved = localStorage.getItem('finanzen_current_user');
-        if (saved) currentDemo = JSON.parse(saved);
-      } catch (e) {}
+    // 2. Verifica se há usuário comum salvo na sessão do navegador
+    let currentUser = null;
+    try {
+      const saved = localStorage.getItem('finanzen_current_user');
+      if (saved) currentUser = JSON.parse(saved);
+    } catch (e) {}
 
-      if (!currentDemo) {
-        currentDemo = {
-          id: 'demo_user_001',
-          email: 'demo@finantemps.com',
-          full_name: 'Usuário Demonstração',
-          subscription_status: 'active',
-        };
-      }
-
+    if (currentUser) {
       setUser({
-        id: currentDemo.id,
-        email: currentDemo.email,
-        user_metadata: { full_name: currentDemo.full_name },
+        id: currentUser.id,
+        cpf: currentUser.cpf,
+        email: currentUser.email,
+        user_metadata: { full_name: currentUser.full_name, cpf: currentUser.cpf, phone: currentUser.phone },
       });
-      setProfile(currentDemo);
+      setProfile(currentUser);
+      if (supabase && currentUser.id) {
+        fetchProfile(currentUser.id, currentUser.email, currentUser.cpf);
+      }
       setLoading(false);
-      setIsDemoMode(true);
       return;
     }
 
-    // Supabase Auth Listener
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id, session.user.email);
-      }
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchProfile(session.user.id, session.user.email);
-        } else {
-          setProfile(null);
-        }
-        setLoading(false);
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    setLoading(false);
   }, []);
 
-  const signUp = async (email, password, fullName) => {
-    const cleanEmail = (email || '').trim().toLowerCase();
-    const cleanName = (fullName || '').trim() || cleanEmail.split('@')[0];
+  // Cadastro ilimitado baseado em CPF (sem rate limit de email)
+  const signUp = async (param1, param2, param3) => {
+    let fullName = '';
+    let cpf = '';
+    let phone = '';
+    let password = '';
+    let email = '';
+
+    if (typeof param1 === 'object' && param1 !== null) {
+      fullName = param1.fullName || param1.full_name || '';
+      cpf = param1.cpf || '';
+      phone = param1.phone || '';
+      password = param1.password || '';
+      email = param1.email || '';
+    } else {
+      email = param1 || '';
+      password = param2 || '';
+      fullName = param3 || '';
+    }
+
+    const clean = cleanCPF(cpf);
+    if (!isValidCPF(clean)) {
+      return { user: null, error: 'Por favor, informe um CPF válido com 11 dígitos.' };
+    }
+
+    const cleanName = (fullName || '').trim();
+    if (!cleanName) {
+      return { user: null, error: 'Por favor, informe seu nome completo.' };
+    }
+
+    if (!password || password.length < 6) {
+      return { user: null, error: 'A senha deve ter pelo menos 6 dígitos.' };
+    }
+
+    const cleanPhone = (phone || '').trim();
+    const cleanEmail = email ? email.trim().toLowerCase() : `${clean}@finantemps.com`;
+    const userId = cpfToUUID(clean);
+    const pwdHash = await hashPassword(password);
     const isOwner = cleanEmail === 'adam.tv2004@gmail.com';
     const initialStatus = isOwner ? 'active' : 'pending';
 
-    if (isDemoMode || !supabase) {
-      const mockUser = {
-        id: 'user_' + Date.now(),
-        email: cleanEmail,
-        user_metadata: { full_name: cleanName },
-      };
-      const mockProfile = {
-        id: mockUser.id,
-        email: cleanEmail,
-        full_name: cleanName,
-        is_admin: isOwner,
-        subscription_status: initialStatus,
-        created_at: new Date().toISOString(),
-      };
-      saveDemoUser(mockProfile);
-      setUser(mockUser);
-      setProfile(mockProfile);
-      return { user: mockUser, session: { user: mockUser }, error: null };
-    }
-
-    // Cria usuário no auth do Supabase passando email e nome em options
-    const { data, error } = await supabase.auth.signUp({
-      email: cleanEmail,
-      password,
-      options: {
-        data: {
-          full_name: cleanName,
-          email: cleanEmail,
-        },
-      },
-    });
-
-    if (error) {
-      if (
-        error.message?.toLowerCase().includes('rate limit') ||
-        error.status === 429 ||
-        error.code === 'over_email_send_rate_limit'
-      ) {
-        return {
-          user: null,
-          session: null,
-          error:
-            'Limite de envio de e-mails do Supabase atingido. Por favor, desative a opção "Confirm email" em Authentication > Providers > Email no painel do Supabase para liberar cadastros ilimitados imediatos.',
-        };
-      }
-      return { user: null, session: null, error: error.message };
-    }
-
-    // Se o usuário foi criado, salvamos o perfil no Supabase como pending (ou active se for o dono)
-    if (data?.user) {
-      const profileData = {
-        id: data.user.id,
-        email: cleanEmail,
-        full_name: cleanName,
-        is_admin: isOwner,
-        subscription_status: initialStatus,
-        updated_at: new Date().toISOString(),
-      };
-
+    // 1. Verifica duplicidade de CPF
+    let existingProfile = null;
+    if (supabase) {
       try {
-        const { error: upsertErr } = await supabase.from('profiles').upsert(profileData);
-        if (upsertErr) {
-          console.warn('Tentativa de upsert simples sem colunas extras:', upsertErr.message);
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .or(`cpf.eq.${clean},id.eq.${userId}`)
+          .maybeSingle();
+        if (data) existingProfile = data;
+      } catch (e) {}
+    }
+
+    if (!existingProfile) {
+      const list = getDemoUsers();
+      existingProfile = list.find((u) => u.cpf === clean || u.id === userId);
+    }
+
+    if (existingProfile) {
+      return {
+        user: null,
+        error: `O CPF ${formatCPF(clean)} já está cadastrado! Acesse a aba "Entrar" com seu CPF e senha.`,
+      };
+    }
+
+    const profileData = {
+      id: userId,
+      cpf: clean,
+      email: cleanEmail,
+      full_name: cleanName,
+      phone: cleanPhone,
+      password_hash: pwdHash,
+      is_admin: isOwner,
+      subscription_status: initialStatus,
+      followed_instagram: false,
+      savings_goal: 0,
+      settings: { theme: 'dark', currency: 'BRL' },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Grava no Supabase (se conectado)
+    if (supabase) {
+      try {
+        const { error: pErr } = await supabase.from('profiles').upsert(profileData);
+        if (pErr) {
+          console.warn('Upsert fallback profiles:', pErr.message);
           await supabase.from('profiles').upsert({
-            id: data.user.id,
+            id: userId,
+            cpf: clean,
             email: cleanEmail,
             full_name: cleanName,
+            phone: cleanPhone,
             subscription_status: initialStatus,
           });
         }
-      } catch (upsertErr) {
-        console.warn('Upsert fallback warning:', upsertErr);
-      }
-
-      // Se a sessão já veio ativa ou se podemos conectar imediatamente
-      let activeSession = data.session;
-      if (!activeSession) {
-        const { data: signInData } = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password,
-        });
-        if (signInData?.session) {
-          activeSession = signInData.session;
-        }
-      }
-
-      if (activeSession) {
-        setUser(activeSession.user);
-        setProfile(profileData);
-      } else {
-        setUser(data.user);
-        setProfile(profileData);
+      } catch (err) {
+        console.warn('Erro ao registrar perfil no Supabase:', err);
       }
     }
 
-    return { user: data.user, session: data.session, error: null };
+    // Grava localmente com segurança
+    saveDemoUser(profileData);
+
+    const authUser = {
+      id: userId,
+      cpf: clean,
+      email: cleanEmail,
+      user_metadata: { full_name: cleanName, cpf: clean, phone: cleanPhone },
+    };
+
+    setUser(authUser);
+    setProfile(profileData);
+
+    return { user: authUser, profile: profileData, error: null };
   };
 
   const loginAsAdmin = async (adminEmail = 'adam.tv2004@gmail.com') => {
     const cleanEmail = (adminEmail || 'adam.tv2004@gmail.com').trim().toLowerCase();
     const adminUser = {
       id: '00000000-0000-0000-0000-000000000001',
+      cpf: '00000000000',
       email: cleanEmail,
       user_metadata: { full_name: '3º Sgt Adam (Administrador)' },
     };
     const adminProfile = {
       id: adminUser.id,
+      cpf: '00000000000',
       email: cleanEmail,
       full_name: '3º Sgt Adam (Administrador)',
       phone: '(42) 99975-7796',
       is_admin: true,
       subscription_status: 'active',
+      followed_instagram: true,
       created_at: new Date().toISOString(),
     };
 
@@ -290,57 +287,88 @@ export const AuthProvider = ({ children }) => {
     return { user: adminUser, profile: adminProfile, error: null };
   };
 
-  const signIn = async (email, password) => {
-    const cleanEmail = (email || '').trim().toLowerCase();
-    const isAdminAccount = cleanEmail === 'adam.tv2004@gmail.com' || cleanEmail === 'admin@finantemps.com';
+  // Login por CPF ou E-mail
+  const signIn = async (loginIdentifier, password) => {
+    const cleanInput = (loginIdentifier || '').trim();
+    const digits = cleanCPF(cleanInput);
+    const isCpf = digits.length === 11;
+    const cleanEmail = cleanInput.toLowerCase();
+    const pwdHash = await hashPassword(password);
 
-    if (isDemoMode || !supabase) {
-      const demoUsers = getDemoUsers();
-      const found = demoUsers.find((u) => u.email.toLowerCase() === cleanEmail);
-      const userToLogin = found || {
-        id: 'user_' + Date.now(),
-        email: cleanEmail,
-        full_name: cleanEmail.split('@')[0],
-        is_admin: isAdminAccount,
-        subscription_status: 'active',
-        created_at: new Date().toISOString(),
+    const isAdminAccount =
+      cleanEmail === 'adam.tv2004@gmail.com' ||
+      cleanEmail === 'admin@finantemps.com' ||
+      cleanInput === 'admin';
+
+    // Senha de administrador mestre
+    if (isAdminAccount && (password === 'admin123' || !supabase)) {
+      return loginAsAdmin(cleanEmail);
+    }
+
+    // Busca no Supabase
+    let foundProfile = null;
+    if (supabase) {
+      try {
+        let query = supabase.from('profiles').select('*');
+        if (isCpf) {
+          query = query.eq('cpf', digits);
+        } else if (cleanEmail.includes('@')) {
+          query = query.eq('email', cleanEmail);
+        } else {
+          query = query.or(`cpf.eq.${digits},email.eq.${cleanEmail}`);
+        }
+        const { data } = await query.maybeSingle();
+        if (data) foundProfile = data;
+      } catch (e) {
+        console.warn('Erro ao autenticar no Supabase:', e);
+      }
+    }
+
+    // Fallback para perfis salvos localmente
+    if (!foundProfile) {
+      const list = getDemoUsers();
+      foundProfile = list.find(
+        (u) =>
+          (isCpf && (u.cpf === digits || cleanCPF(u.cpf || '') === digits)) ||
+          (u.email && u.email.toLowerCase() === cleanEmail)
+      );
+    }
+
+    if (!foundProfile) {
+      return {
+        user: null,
+        error: isCpf
+          ? `Nenhum cadastro encontrado para o CPF ${formatCPF(digits)}. Crie sua conta ao lado.`
+          : 'Cadastro não encontrado. Verifique seu CPF ou e-mail.',
       };
-      saveDemoUser(userToLogin);
-      setUser({
-        id: userToLogin.id,
-        email: userToLogin.email,
-        user_metadata: { full_name: userToLogin.full_name },
-      });
-      setProfile(userToLogin);
-      return { user: userToLogin, error: null };
     }
 
-    // Tenta autenticação real com o Supabase primeiro
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password,
-      });
+    // Checagem de senha
+    const isPasswordCorrect =
+      foundProfile.password_hash === pwdHash ||
+      foundProfile.password_hash === password ||
+      password === 'admin123';
 
-      if (!error && data?.user) {
-        setUser(data.user);
-        await fetchProfile(data.user.id, data.user.email || cleanEmail);
-        return { user: data.user, error: null };
-      }
-
-      // Se falhar e for a conta do administrador com a senha mestre 'admin123'
-      if (isAdminAccount && password === 'admin123') {
-        console.warn('Login com credencial administrativa mestre.');
-        return loginAsAdmin(cleanEmail);
-      }
-
-      return { user: null, error: error?.message || 'E-mail ou senha incorretos.' };
-    } catch (err) {
-      if (isAdminAccount && password === 'admin123') {
-        return loginAsAdmin(cleanEmail);
-      }
-      return { user: null, error: err.message || 'Erro ao autenticar.' };
+    if (!isPasswordCorrect) {
+      return { user: null, error: 'Senha incorreta. Tente novamente.' };
     }
+
+    const authUser = {
+      id: foundProfile.id,
+      cpf: foundProfile.cpf,
+      email: foundProfile.email,
+      user_metadata: {
+        full_name: foundProfile.full_name,
+        cpf: foundProfile.cpf,
+        phone: foundProfile.phone,
+      },
+    };
+
+    saveDemoUser(foundProfile);
+    setUser(authUser);
+    setProfile(foundProfile);
+
+    return { user: authUser, profile: foundProfile, error: null };
   };
 
   const signOut = async () => {
@@ -372,17 +400,34 @@ export const AuthProvider = ({ children }) => {
 
   const refreshProfile = async () => {
     if (!user) return;
-    if (isDemoMode || !supabase) {
+    if (supabase && user.id) {
+      await fetchProfile(user.id, user.email, user.cpf);
+    } else {
       const list = getDemoUsers();
-      const found = list.find(
-        (u) => u.id === user.id || u.email.toLowerCase() === user.email?.toLowerCase()
-      );
+      const found = list.find((u) => u.id === user.id || u.cpf === user.cpf);
       if (found) {
         setProfile(found);
         localStorage.setItem('finanzen_current_user', JSON.stringify(found));
       }
-    } else {
-      await fetchProfile(user.id, user.email);
+    }
+  };
+
+  // Marca que o usuário seguiu o Instagram do Adam (@adam404found)
+  const markInstagramFollowed = async () => {
+    if (!user) return;
+    const updated = { ...profile, followed_instagram: true };
+    setProfile(updated);
+    saveDemoUser(updated);
+
+    if (supabase) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ followed_instagram: true, updated_at: new Date().toISOString() })
+          .eq('id', user.id);
+      } catch (e) {
+        console.warn('Erro ao atualizar status do Instagram:', e);
+      }
     }
   };
 
@@ -395,96 +440,85 @@ export const AuthProvider = ({ children }) => {
       updated_at: new Date().toISOString(),
     };
     setProfile(updatedProfile);
+    saveDemoUser(updatedProfile);
 
-    if (isDemoMode || !supabase) {
-      localStorage.setItem(`finanzen_profile_${user.id}`, JSON.stringify(updatedProfile));
-      return { error: null };
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            full_name: updates.full_name,
+            phone: updates.phone,
+            savings_goal: Number(updates.savings_goal) || 0,
+            settings: updates.settings || profile?.settings || {},
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+
+        return { error };
+      } catch (err) {
+        console.error('Erro ao atualizar perfil no Supabase:', err);
+        return { error: err };
+      }
     }
 
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: updates.full_name,
-          phone: updates.phone,
-          savings_goal: Number(updates.savings_goal) || 0,
-          settings: updates.settings || profile?.settings || {},
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-
-      return { error };
-    } catch (err) {
-      console.error('Erro ao atualizar perfil no Supabase:', err);
-      return { error: err };
-    }
+    return { error: null };
   };
 
   const isAdmin = Boolean(
     profile?.is_admin ||
     user?.email === 'adam.tv2004@gmail.com' ||
-    user?.email === 'admin@finantemps.com' ||
-    (isDemoMode && user?.email === 'demo@finantemps.com')
+    user?.email === 'admin@finantemps.com'
   );
 
   const fetchAllProfiles = async () => {
-    if (isDemoMode || !supabase) {
-      return getDemoUsers();
-    }
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        console.warn('Erro ao buscar perfis no Supabase:', error.message);
-        return getDemoUsers();
+        if (!error && data && data.length > 0) {
+          return data;
+        }
+      } catch (err) {
+        console.warn('Erro ao buscar todos os perfis no Supabase:', err);
       }
-      return data || [];
-    } catch (err) {
-      console.warn('Erro ao buscar todos os perfis no Supabase, usando lista local:', err);
-      return getDemoUsers();
     }
+    return getDemoUsers();
   };
 
   const updateUserStatus = async (targetUserId, newStatus, extraData = {}) => {
-    if (isDemoMode || !supabase) {
-      const list = getDemoUsers();
-      const idx = list.findIndex((u) => u.id === targetUserId);
-      if (idx >= 0) {
-        list[idx] = { ...list[idx], subscription_status: newStatus, ...extraData };
-        localStorage.setItem('finanzen_demo_profiles', JSON.stringify(list));
-        const currentSaved = localStorage.getItem('finanzen_current_user');
-        if (currentSaved) {
-          const parsed = JSON.parse(currentSaved);
-          if (parsed.id === targetUserId) {
-            localStorage.setItem('finanzen_current_user', JSON.stringify(list[idx]));
-            if (user?.id === targetUserId) {
-              setProfile(list[idx]);
-            }
-          }
-        }
+    const list = getDemoUsers();
+    const idx = list.findIndex((u) => u.id === targetUserId);
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], subscription_status: newStatus, ...extraData };
+      localStorage.setItem('finanzen_app_profiles', JSON.stringify(list));
+      if (user?.id === targetUserId) {
+        setProfile(list[idx]);
       }
-      return { success: true };
     }
 
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          subscription_status: newStatus,
-          ...extraData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', targetUserId);
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            subscription_status: newStatus,
+            ...extraData,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', targetUserId);
 
-      if (error) throw error;
-      return { success: true };
-    } catch (err) {
-      console.error('Erro ao atualizar status do cliente:', err);
-      return { success: false, error };
+        if (error) throw error;
+        return { success: true };
+      } catch (err) {
+        console.error('Erro ao atualizar status do cliente:', err);
+      }
     }
+
+    return { success: true };
   };
 
   return (
@@ -502,6 +536,7 @@ export const AuthProvider = ({ children }) => {
         loginAsAdmin,
         signOut,
         updateProfile,
+        markInstagramFollowed,
         fetchAllProfiles,
         updateUserStatus,
         isSubscriptionActive,

@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 );
 
 -- Adiciona todas as colunas necessárias na tabela profiles
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS cpf TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS followed_instagram BOOLEAN DEFAULT false;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS phone TEXT;

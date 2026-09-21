@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { formatDate } from '../../utils/formatters';
+import { formatDate, formatCPF } from '../../utils/formatters';
 import {
   X,
   Shield,
@@ -13,7 +13,8 @@ import {
   RefreshCw,
   Sparkles,
   UserCheck,
-  Check
+  Check,
+  Instagram
 } from 'lucide-react';
 
 export const AdminPanelModal = ({ isOpen, onClose }) => {
@@ -325,6 +326,16 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                           </span>
                         )}
 
+                        {client.followed_instagram ? (
+                          <span style={{ fontSize: '0.7rem', background: 'rgba(225, 48, 108, 0.18)', color: '#e1306c', border: '1px solid rgba(225, 48, 108, 0.4)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                            <Instagram size={11} /> Seguiu @adam404found
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.7rem', background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-dim)', padding: '2px 6px', borderRadius: '4px' }}>
+                            Não seguiu Insta
+                          </span>
+                        )}
+
                         {isPending ? (
                           <span
                             style={{
@@ -350,6 +361,11 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                       </div>
 
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '3px' }}>
+                        {client.cpf && (
+                          <span style={{ color: 'var(--primary)', fontWeight: 700, marginRight: '8px' }}>
+                            CPF: {formatCPF(client.cpf)}
+                          </span>
+                        )}
                         <strong style={{ color: '#e2e8f0' }}>{client.email}</strong> {client.phone ? `• ${client.phone}` : ''} • Cadastro: {formatDate(client.created_at?.split('T')[0])}
                       </div>
                     </div>

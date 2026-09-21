@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { formatCPF, formatPhone, cleanCPF } from '../../utils/formatters';
 import {
   Mail,
   Lock,
@@ -10,7 +11,9 @@ import {
   CheckCircle2,
   X,
   Eye,
-  EyeOff
+  EyeOff,
+  CreditCard,
+  Phone
 } from 'lucide-react';
 
 export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'login' }) => {
@@ -18,9 +21,11 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
   
   // 'login' | 'register'
   const [activeTab, setActiveTab] = useState('login');
-  const [email, setEmail] = useState('');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -29,15 +34,35 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
   useEffect(() => {
     if (isOpen) {
       setActiveTab(initialMode === 'register' ? 'register' : 'login');
-      setEmail(initialEmail || '');
+      setLoginIdentifier(initialEmail || '');
       setPassword('');
       setFullName('');
+      setCpf('');
+      setPhone('');
       setErrorMsg('');
       setSuccessMsg('');
     }
   }, [isOpen, initialEmail, initialMode]);
 
   if (!isOpen) return null;
+
+  const handleCpfChange = (e) => {
+    setCpf(formatCPF(e.target.value));
+  };
+
+  const handlePhoneChange = (e) => {
+    setPhone(formatPhone(e.target.value));
+  };
+
+  const handleLoginIdentifierChange = (e) => {
+    const val = e.target.value;
+    // Se for apenas números, formata como CPF automaticamente
+    if (/^\d+$/.test(val.replace(/\D/g, '')) && !val.includes('@') && val.replace(/\D/g, '').length <= 11) {
+      setLoginIdentifier(formatCPF(val));
+    } else {
+      setLoginIdentifier(val);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,25 +77,51 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
           setLoading(false);
           return;
         }
-        const res = await signUp(email, password, fullName);
+
+        const rawCpf = cleanCPF(cpf);
+        if (rawCpf.length !== 11) {
+          setErrorMsg('Por favor, informe um CPF válido com 11 dígitos.');
+          setLoading(false);
+          return;
+        }
+
+        if (password.length < 6) {
+          setErrorMsg('A senha deve ter no mínimo 6 dígitos.');
+          setLoading(false);
+          return;
+        }
+
+        const res = await signUp({
+          fullName,
+          cpf: rawCpf,
+          phone,
+          password,
+        });
+
         if (res.error) {
           setErrorMsg(typeof res.error === 'string' ? res.error : res.error.message || 'Erro ao criar conta.');
         } else {
-          setSuccessMsg('Conta cadastrada com sucesso! Bem-vindo.');
+          setSuccessMsg('Conta criada com sucesso! Redirecionando...');
           setTimeout(() => {
             onClose();
-          }, 1000);
+          }, 800);
         }
       } else {
-        // Login padrão (a conta admin entra por aqui normalmente e ganha os privilégios)
-        const res = await signIn(email, password);
+        // Login com CPF ou E-mail
+        if (!loginIdentifier.trim()) {
+          setErrorMsg('Por favor, digite seu CPF ou e-mail.');
+          setLoading(false);
+          return;
+        }
+
+        const res = await signIn(loginIdentifier, password);
         if (res.error) {
-          setErrorMsg(typeof res.error === 'string' ? res.error : res.error.message || 'E-mail ou senha incorretos.');
+          setErrorMsg(typeof res.error === 'string' ? res.error : res.error.message || 'Credenciais incorretas.');
         } else {
           setSuccessMsg('Login realizado com sucesso!');
           setTimeout(() => {
             onClose();
-          }, 800);
+          }, 600);
         }
       }
     } catch (err) {
@@ -142,13 +193,13 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
         </button>
 
         {/* Topo com Logo e Missão */}
-        <div style={{ textAlign: 'center', marginBottom: '22px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <div style={{ margin: '0 auto 8px', display: 'inline-block' }}>
             <img
               src="/logo.png"
               alt="Divisa 3º Sgt Infantaria 13º BIB"
               style={{
-                width: '60px',
+                width: '56px',
                 height: 'auto',
                 borderRadius: '8px',
                 border: '2px solid rgba(16, 185, 129, 0.4)',
@@ -159,15 +210,15 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
             />
           </div>
           <div style={{ fontSize: '0.70rem', color: '#10b981', fontWeight: 800, letterSpacing: '0.5px' }}>
-            FORJADO NO 13º BATALHÃO DE INFANTARIA BLINDADO
+            13º BATALHÃO DE INFANTARIA BLINDADO
           </div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginTop: '4px' }}>
-            {activeTab === 'register' ? 'Criar sua Conta' : 'Acesse o FinanTEMP\'s'}
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff', marginTop: '4px' }}>
+            {activeTab === 'register' ? 'Cadastro via CPF' : 'Acesse o FinanTEMP\'s'}
           </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '2px', marginBottom: 0 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '2px', marginBottom: 0 }}>
             {activeTab === 'register'
-              ? 'Organize suas finanças com simplicidade e disciplina'
-              : 'Assuma o comando total do seu dinheiro'}
+              ? 'Cadastro ilimitado por CPF sem necessidade de confirmação por e-mail'
+              : 'Entre com seu CPF ou E-mail e sua senha'}
           </p>
         </div>
 
@@ -180,7 +231,7 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
             background: 'rgba(0, 0, 0, 0.25)',
             padding: '4px',
             borderRadius: '10px',
-            marginBottom: '20px',
+            marginBottom: '18px',
             border: '1px solid var(--border-color)',
           }}
         >
@@ -238,8 +289,9 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
               color: '#f43f5e',
               padding: '10px 14px',
               borderRadius: '8px',
-              fontSize: '0.85rem',
+              fontSize: '0.84rem',
               marginBottom: '16px',
+              lineHeight: 1.4,
             }}
           >
             {errorMsg}
@@ -254,7 +306,7 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
               color: '#10b981',
               padding: '10px 14px',
               borderRadius: '8px',
-              fontSize: '0.85rem',
+              fontSize: '0.84rem',
               marginBottom: '16px',
               display: 'flex',
               alignItems: 'center',
@@ -268,58 +320,107 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
 
         {/* Formulário de Login / Cadastro */}
         <form onSubmit={handleSubmit}>
-          {activeTab === 'register' && (
+          {activeTab === 'register' ? (
+            <>
+              {/* Nome Completo */}
+              <div className="form-group">
+                <label className="form-label">Nome Completo</label>
+                <div style={{ position: 'relative' }}>
+                  <User
+                    size={17}
+                    style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-dim)' }}
+                  />
+                  <input
+                    type="text"
+                    className="form-control"
+                    style={{ paddingLeft: '38px' }}
+                    placeholder="Ex: Lucas Adam"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* CPF (Chave Única) */}
+              <div className="form-group">
+                <label className="form-label">
+                  CPF <span style={{ color: 'var(--primary)', fontSize: '0.75rem' }}>(chave de acesso ilimitada)</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <CreditCard
+                    size={17}
+                    style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-dim)' }}
+                  />
+                  <input
+                    type="text"
+                    className="form-control"
+                    style={{ paddingLeft: '38px', letterSpacing: '0.5px' }}
+                    placeholder="000.000.000-00"
+                    value={cpf}
+                    onChange={handleCpfChange}
+                    maxLength={14}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* WhatsApp */}
+              <div className="form-group">
+                <label className="form-label">WhatsApp / Celular</label>
+                <div style={{ position: 'relative' }}>
+                  <Phone
+                    size={17}
+                    style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-dim)' }}
+                  />
+                  <input
+                    type="text"
+                    className="form-control"
+                    style={{ paddingLeft: '38px' }}
+                    placeholder="(42) 99999-9999"
+                    value={phone}
+                    onChange={handlePhoneChange}
+                    maxLength={15}
+                    required
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Campo de Login: CPF ou Email */
             <div className="form-group">
-              <label className="form-label">Nome Completo</label>
+              <label className="form-label">CPF ou E-mail</label>
               <div style={{ position: 'relative' }}>
-                <User
-                  size={18}
+                <CreditCard
+                  size={17}
                   style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-dim)' }}
                 />
                 <input
                   type="text"
                   className="form-control"
                   style={{ paddingLeft: '38px' }}
-                  placeholder="Seu nome"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Digite seu CPF ou E-mail"
+                  value={loginIdentifier}
+                  onChange={handleLoginIdentifierChange}
                   required
                 />
               </div>
             </div>
           )}
 
-          <div className="form-group">
-            <label className="form-label">E-mail</label>
-            <div style={{ position: 'relative' }}>
-              <Mail
-                size={18}
-                style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-dim)' }}
-              />
-              <input
-                type="email"
-                className="form-control"
-                style={{ paddingLeft: '38px' }}
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
+          {/* Campo de Senha */}
           <div className="form-group">
             <label className="form-label">Senha</label>
             <div style={{ position: 'relative' }}>
               <Lock
-                size={18}
+                size={17}
                 style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-dim)' }}
               />
               <input
                 type={showPassword ? 'text' : 'password'}
                 className="form-control"
                 style={{ paddingLeft: '38px', paddingRight: '38px' }}
-                placeholder="Sua senha secreta"
+                placeholder={activeTab === 'register' ? 'Crie uma senha (mín. 6 dígitos)' : 'Sua senha'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -350,7 +451,7 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
             className="btn btn-primary"
             style={{
               width: '100%',
-              marginTop: '8px',
+              marginTop: '10px',
               padding: '12px',
               fontWeight: 800,
             }}
@@ -360,7 +461,7 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
               'Processando...'
             ) : activeTab === 'register' ? (
               <>
-                <span>Criar Conta</span>
+                <span>Cadastrar com CPF</span>
                 <ArrowRight size={18} />
               </>
             ) : (
@@ -390,26 +491,26 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
             }}
           >
             {activeTab === 'register'
-              ? 'Já possui conta? Clique para entrar'
-              : 'Não tem conta? Clique aqui para criar'}
+              ? 'Já possui conta? Clique aqui para entrar'
+              : 'Não tem conta? Cadastre-se com seu CPF'}
           </button>
         </div>
 
         <div
           style={{
-            marginTop: '20px',
-            paddingTop: '14px',
+            marginTop: '18px',
+            paddingTop: '12px',
             borderTop: '1px solid var(--border-color)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '6px',
             color: 'var(--text-dim)',
-            fontSize: '0.76rem',
+            fontSize: '0.74rem',
           }}
         >
           <ShieldCheck size={14} color="#10b981" />
-          Seus dados são 100% privados e criptografados.
+          Acesso individual e criptografado por CPF.
         </div>
       </div>
     </div>
