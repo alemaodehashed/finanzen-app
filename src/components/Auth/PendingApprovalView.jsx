@@ -20,10 +20,11 @@ export const PendingApprovalView = () => {
   const cleanEmail = user?.email || profile?.email || '';
   const cleanName = profile?.full_name || cleanEmail.split('@')[0] || 'Usuário';
 
+  const adminPhone = '5542999757796';
   const whatsappMessage = encodeURIComponent(
     `Olá Adam! Acabei de criar minha conta no FinanTEMP's (${cleanName} - ${cleanEmail}). Pode liberar meu acesso no painel?`
   );
-  const whatsappUrl = `https://wa.me/?text=${whatsappMessage}`;
+  const whatsappUrl = `https://wa.me/${adminPhone}?text=${whatsappMessage}`;
 
   return (
     <div

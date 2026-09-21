@@ -74,11 +74,16 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
     }
 
     setLoading(true);
-    await addRecord({
+    const result = await addRecord({
       ...formData,
       amount: Number(formData.amount),
     });
     setLoading(false);
+
+    if (result && !result.success && !result.localSaved) {
+      alert('Atenção: Não foi possível salvar o lançamento: ' + (result.error || 'Erro desconhecido.'));
+      return;
+    }
 
     // Efeito de confete ao lançar renda ou receita
     if (formData.type === 'renda' || formData.type === 'renda_extra') {

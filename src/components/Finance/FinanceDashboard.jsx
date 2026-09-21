@@ -16,7 +16,9 @@ import {
   Briefcase,
   DollarSign,
   Filter,
-  Target
+  Target,
+  Database,
+  RefreshCw
 } from 'lucide-react';
 import { CategoryReport } from './CategoryReport';
 
@@ -27,7 +29,7 @@ const MONTHS = [
 
 export const FinanceDashboard = ({ onOpenNewModal }) => {
   const { profile } = useAuth();
-  const { records, deleteRecord } = useFinance();
+  const { records, deleteRecord, syncStatus, refreshRecords } = useFinance();
 
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
@@ -117,10 +119,74 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
           </p>
         </div>
 
-        <button onClick={onOpenNewModal} className="btn btn-primary" style={{ padding: '12px 20px' }}>
-          <Plus size={18} />
-          <span>Novo Lançamento</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {/* Badge de Sincronização com o Banco de Dados */}
+          <button
+            type="button"
+            onClick={() => refreshRecords && refreshRecords()}
+            title={
+              syncStatus === 'synced'
+                ? 'Conectado e sincronizado com o Banco de Dados Supabase (Clique para atualizar)'
+                : syncStatus === 'syncing'
+                ? 'Sincronizando com o banco...'
+                : syncStatus === 'error'
+                ? 'Aviso: Banco de dados inacessível. Lançamentos salvos no seu aparelho com segurança.'
+                : 'Lançamentos salvos no seu aparelho'
+            }
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              borderRadius: '20px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              background:
+                syncStatus === 'synced'
+                  ? 'rgba(16, 185, 129, 0.14)'
+                  : syncStatus === 'syncing'
+                  ? 'rgba(6, 182, 212, 0.14)'
+                  : syncStatus === 'error'
+                  ? 'rgba(244, 63, 94, 0.14)'
+                  : 'rgba(255, 255, 255, 0.06)',
+              border: `1px solid ${
+                syncStatus === 'synced'
+                  ? 'rgba(16, 185, 129, 0.4)'
+                  : syncStatus === 'syncing'
+                  ? 'rgba(6, 182, 212, 0.4)'
+                  : syncStatus === 'error'
+                  ? 'rgba(244, 63, 94, 0.4)'
+                  : 'var(--border-color)'
+              }`,
+              color:
+                syncStatus === 'synced'
+                  ? '#10b981'
+                  : syncStatus === 'syncing'
+                  ? '#06b6d4'
+                  : syncStatus === 'error'
+                  ? '#f43f5e'
+                  : 'var(--text-dim)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <Database size={14} />
+            <span>
+              {syncStatus === 'synced'
+                ? '● Nuvem Conectada'
+                : syncStatus === 'syncing'
+                ? 'Sincronizando...'
+                : syncStatus === 'error'
+                ? '● Salvo no Aparelho'
+                : '● Armazenado Local'}
+            </span>
+          </button>
+
+          <button onClick={onOpenNewModal} className="btn btn-primary" style={{ padding: '12px 20px' }}>
+            <Plus size={18} />
+            <span>Novo Lançamento</span>
+          </button>
+        </div>
       </div>
 
       {/* Seletor de Período */}

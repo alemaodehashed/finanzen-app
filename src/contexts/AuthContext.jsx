@@ -198,7 +198,21 @@ export const AuthProvider = ({ children }) => {
       },
     });
 
-    if (error) return { user: null, session: null, error: error.message };
+    if (error) {
+      if (
+        error.message?.toLowerCase().includes('rate limit') ||
+        error.status === 429 ||
+        error.code === 'over_email_send_rate_limit'
+      ) {
+        return {
+          user: null,
+          session: null,
+          error:
+            'Limite de envio de e-mails do Supabase atingido. Por favor, desative a opção "Confirm email" em Authentication > Providers > Email no painel do Supabase para liberar cadastros ilimitados imediatos.',
+        };
+      }
+      return { user: null, session: null, error: error.message };
+    }
 
     // Se o usuário foi criado, salvamos o perfil no Supabase como pending (ou active se for o dono)
     if (data?.user) {
@@ -212,7 +226,16 @@ export const AuthProvider = ({ children }) => {
       };
 
       try {
-        await supabase.from('profiles').upsert(profileData);
+        const { error: upsertErr } = await supabase.from('profiles').upsert(profileData);
+        if (upsertErr) {
+          console.warn('Tentativa de upsert simples sem colunas extras:', upsertErr.message);
+          await supabase.from('profiles').upsert({
+            id: data.user.id,
+            email: cleanEmail,
+            full_name: cleanName,
+            subscription_status: initialStatus,
+          });
+        }
       } catch (upsertErr) {
         console.warn('Upsert fallback warning:', upsertErr);
       }
@@ -244,7 +267,7 @@ export const AuthProvider = ({ children }) => {
   const loginAsAdmin = async (adminEmail = 'adam.tv2004@gmail.com') => {
     const cleanEmail = (adminEmail || 'adam.tv2004@gmail.com').trim().toLowerCase();
     const adminUser = {
-      id: 'admin_master_adam',
+      id: '00000000-0000-0000-0000-000000000001',
       email: cleanEmail,
       user_metadata: { full_name: '3º Sgt Adam (Administrador)' },
     };
@@ -252,6 +275,7 @@ export const AuthProvider = ({ children }) => {
       id: adminUser.id,
       email: cleanEmail,
       full_name: '3º Sgt Adam (Administrador)',
+      phone: '(42) 99975-7796',
       is_admin: true,
       subscription_status: 'active',
       created_at: new Date().toISOString(),
@@ -263,26 +287,12 @@ export const AuthProvider = ({ children }) => {
     setUser(adminUser);
     setProfile(adminProfile);
 
-    // Se o Supabase estiver conectado, sincroniza o perfil de admin
-    if (supabase) {
-      try {
-        await supabase.from('profiles').upsert(adminProfile);
-      } catch (err) {
-        console.warn('Upsert fallback admin:', err);
-      }
-    }
-
     return { user: adminUser, profile: adminProfile, error: null };
   };
 
   const signIn = async (email, password) => {
     const cleanEmail = (email || '').trim().toLowerCase();
     const isAdminAccount = cleanEmail === 'adam.tv2004@gmail.com' || cleanEmail === 'admin@finantemps.com';
-
-    // Se for conta de administrador e senha de admin ou modo demo
-    if (isAdminAccount && (password === 'admin123' || !supabase || isDemoMode)) {
-      return loginAsAdmin(cleanEmail);
-    }
 
     if (isDemoMode || !supabase) {
       const demoUsers = getDemoUsers();
@@ -305,29 +315,28 @@ export const AuthProvider = ({ children }) => {
       return { user: userToLogin, error: null };
     }
 
+    // Tenta autenticação real com o Supabase primeiro
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password,
       });
 
-      if (error) {
-        // Se for conta de admin do dono, permite acesso imediato como fallback seguro
-        if (isAdminAccount) {
-          console.warn('Fallback admin ativado após erro no Supabase:', error.message);
-          return loginAsAdmin(cleanEmail);
-        }
-        return { user: null, error: error.message };
-      }
-
-      if (data?.user) {
+      if (!error && data?.user) {
         setUser(data.user);
         await fetchProfile(data.user.id, data.user.email || cleanEmail);
+        return { user: data.user, error: null };
       }
 
-      return { user: data.user, error: null };
+      // Se falhar e for a conta do administrador com a senha mestre 'admin123'
+      if (isAdminAccount && password === 'admin123') {
+        console.warn('Login com credencial administrativa mestre.');
+        return loginAsAdmin(cleanEmail);
+      }
+
+      return { user: null, error: error?.message || 'E-mail ou senha incorretos.' };
     } catch (err) {
-      if (isAdminAccount) {
+      if (isAdminAccount && password === 'admin123') {
         return loginAsAdmin(cleanEmail);
       }
       return { user: null, error: err.message || 'Erro ao autenticar.' };
@@ -428,8 +437,11 @@ export const AuthProvider = ({ children }) => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data && data.length > 0 ? data : getDemoUsers();
+      if (error) {
+        console.warn('Erro ao buscar perfis no Supabase:', error.message);
+        return getDemoUsers();
+      }
+      return data || [];
     } catch (err) {
       console.warn('Erro ao buscar todos os perfis no Supabase, usando lista local:', err);
       return getDemoUsers();
