@@ -75,8 +75,11 @@ const MainApp = () => {
           <PendingApprovalView />
         ) : (
           <>
-            {/* Banner de Contribuição Voluntária */}
-            <PaywallBanner onOpenContribute={() => setIsContributeModalOpen(true)} />
+            {/* Banner com Frase de Finanças, Missão, Instagram e Contribuição */}
+            <PaywallBanner
+              onOpenContribute={() => setIsContributeModalOpen(true)}
+              onOpenMission={() => setIsAboutModalOpen(true)}
+            />
             <FinanceDashboard onOpenNewModal={() => setIsFormModalOpen(true)} />
           </>
         )}

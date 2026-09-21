@@ -105,7 +105,7 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
               </h1>
             </div>
             <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>
-              Por 3º Sgt Adam • 13º BIB <span style={{ color: 'var(--primary)', fontWeight: 700, marginLeft: '4px' }}>★ Missão</span>
+              Por 3º Sgt Adam • 13º BIB
             </div>
           </div>
         </div>
