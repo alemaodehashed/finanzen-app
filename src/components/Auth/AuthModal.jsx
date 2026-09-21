@@ -25,6 +25,7 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [cpf, setCpf] = useState('');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -38,6 +39,7 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
       setPassword('');
       setFullName('');
       setCpf('');
+      setEmail('');
       setPhone('');
       setErrorMsg('');
       setSuccessMsg('');
@@ -85,6 +87,13 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
           return;
         }
 
+        const cleanEmail = (email || '').trim();
+        if (cleanEmail && (!cleanEmail.includes('@') || !cleanEmail.includes('.'))) {
+          setErrorMsg('Por favor, informe um e-mail válido.');
+          setLoading(false);
+          return;
+        }
+
         if (password.length < 6) {
           setErrorMsg('A senha deve ter no mínimo 6 dígitos.');
           setLoading(false);
@@ -94,6 +103,7 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
         const res = await signUp({
           fullName,
           cpf: rawCpf,
+          email: cleanEmail,
           phone,
           password,
         });
@@ -101,7 +111,7 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
         if (res.error) {
           setErrorMsg(typeof res.error === 'string' ? res.error : res.error.message || 'Erro ao criar conta.');
         } else {
-          setSuccessMsg('Conta criada com sucesso! Redirecionando...');
+          setSuccessMsg('Conta criada com sucesso! Acesso liberado...');
           setTimeout(() => {
             onClose();
           }, 800);
@@ -213,11 +223,11 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
             13º BATALHÃO DE INFANTARIA BLINDADO
           </div>
           <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff', marginTop: '4px' }}>
-            {activeTab === 'register' ? 'Cadastro via CPF' : 'Acesse o FinanTEMP\'s'}
+            {activeTab === 'register' ? 'Criar Conta' : 'Acesse o FinanTEMP\'s'}
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '2px', marginBottom: 0 }}>
             {activeTab === 'register'
-              ? 'Cadastro ilimitado por CPF sem necessidade de confirmação por e-mail'
+              ? 'Cadastro rápido com acesso liberado imediatamente'
               : 'Entre com seu CPF ou E-mail e sua senha'}
           </p>
         </div>
@@ -361,6 +371,27 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
                     onChange={handleCpfChange}
                     maxLength={14}
                     required
+                  />
+                </div>
+              </div>
+
+              {/* E-mail */}
+              <div className="form-group">
+                <label className="form-label">
+                  E-mail <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>(opcional para login com e-mail)</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <Mail
+                    size={17}
+                    style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-dim)' }}
+                  />
+                  <input
+                    type="email"
+                    className="form-control"
+                    style={{ paddingLeft: '38px' }}
+                    placeholder="seuemail@exemplo.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
               </div>

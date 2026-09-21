@@ -73,17 +73,14 @@ const MainApp = () => {
       <main className="app-container" style={{ flex: 1 }}>
         {isUserPending ? (
           <PendingApprovalView />
+        ) : !user ? (
+          <PaywallBanner
+            onOpenContribute={() => setIsContributeModalOpen(true)}
+            onOpenMission={() => setIsAboutModalOpen(true)}
+            onOpenAuth={handleOpenAuth}
+          />
         ) : (
-          <>
-            {/* Banner Hero visível apenas antes do login */}
-            {!user && (
-              <PaywallBanner
-                onOpenContribute={() => setIsContributeModalOpen(true)}
-                onOpenMission={() => setIsAboutModalOpen(true)}
-              />
-            )}
-            <FinanceDashboard onOpenNewModal={() => setIsFormModalOpen(true)} />
-          </>
+          <FinanceDashboard onOpenNewModal={() => setIsFormModalOpen(true)} />
         )}
 
         {/* Modal de Lançamento Financeiro */}

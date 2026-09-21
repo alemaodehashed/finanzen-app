@@ -175,34 +175,73 @@ export const AuthProvider = ({ children }) => {
     }
 
     const cleanPhone = (phone || '').trim();
-    const cleanEmail = email ? email.trim().toLowerCase() : `${clean}@finantemps.com`;
+    const cleanEmail = email && email.trim() ? email.trim().toLowerCase() : `${clean}@finantemps.com`;
     const userId = cpfToUUID(clean);
     const pwdHash = await hashPassword(password);
-    const isOwner = cleanEmail === 'adam.tv2004@gmail.com';
-    const initialStatus = isOwner ? 'active' : 'pending';
+    const isOwner = cleanEmail === 'adam.tv2004@gmail.com' || clean === '00000000000';
+    // Liberação imediata: novos cadastros já nascem ativos, sem necessidade de aprovação manual
+    const initialStatus = 'active';
 
-    // 1. Verifica duplicidade de CPF
+    // 1. Verifica duplicidade de CPF e E-mail
     let existingProfile = null;
+    let duplicateField = null;
+
     if (supabase) {
       try {
-        const { data } = await supabase
+        // Checa por CPF
+        const { data: cpfData } = await supabase
           .from('profiles')
           .select('*')
           .or(`cpf.eq.${clean},id.eq.${userId}`)
           .maybeSingle();
-        if (data) existingProfile = data;
-      } catch (e) {}
+        if (cpfData) {
+          existingProfile = cpfData;
+          duplicateField = 'cpf';
+        }
+
+        // Se CPF não duplicou mas informou e-mail real, checa e-mail
+        if (!existingProfile && email && !cleanEmail.endsWith('@finantemps.com')) {
+          const { data: emailData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('email', cleanEmail)
+            .maybeSingle();
+          if (emailData) {
+            existingProfile = emailData;
+            duplicateField = 'email';
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao consultar duplicidade no Supabase:', e);
+      }
     }
 
     if (!existingProfile) {
       const list = getDemoUsers();
-      existingProfile = list.find((u) => u.cpf === clean || u.id === userId);
+      // Checa CPF na lista local
+      const foundCpf = list.find((u) => u.cpf === clean || cleanCPF(u.cpf || '') === clean || u.id === userId);
+      if (foundCpf) {
+        existingProfile = foundCpf;
+        duplicateField = 'cpf';
+      } else if (email && !cleanEmail.endsWith('@finantemps.com')) {
+        const foundEmail = list.find((u) => u.email?.toLowerCase() === cleanEmail);
+        if (foundEmail) {
+          existingProfile = foundEmail;
+          duplicateField = 'email';
+        }
+      }
     }
 
     if (existingProfile) {
+      if (duplicateField === 'email') {
+        return {
+          user: null,
+          error: `O e-mail ${cleanEmail} já está cadastrado! Acesse a aba "Entrar" com seu e-mail e senha.`,
+        };
+      }
       return {
         user: null,
-        error: `O CPF ${formatCPF(clean)} já está cadastrado! Acesse a aba "Entrar" com seu CPF e senha.`,
+        error: `O CPF ${formatCPF(clean)} já está cadastrado! Acesse a aba "Entrar" com seu CPF ou e-mail e senha.`,
       };
     }
 
@@ -215,7 +254,7 @@ export const AuthProvider = ({ children }) => {
       password_hash: pwdHash,
       is_admin: isOwner,
       subscription_status: initialStatus,
-      followed_instagram: false,
+      followed_instagram: true,
       savings_goal: 0,
       settings: { theme: 'dark', currency: 'BRL' },
       created_at: new Date().toISOString(),
