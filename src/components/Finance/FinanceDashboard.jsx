@@ -343,7 +343,7 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
       </div>
 
       {/* Grid: Gráfico de Categorias e Lista de Lançamentos */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))', gap: '20px' }}>
         {/* Coluna 1: Relatório por Categorias */}
         <div>
           <CategoryReport records={periodRecords} />

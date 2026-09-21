@@ -278,3 +278,67 @@ body {
 .pulse {
   animation: pulseSubtle 2s infinite ease-in-out;
 }
+
+/* ==============================================================================
+   RESPONSIVIDADE MOBILE & PWA ENHANCEMENTS
+   ============================================================================== */
+
+@media (max-width: 640px) {
+  .app-container {
+    padding: 12px 12px 90px 12px;
+  }
+
+  /* Modais ocupando largura total da tela em celulares */
+  .modal-overlay {
+    padding: 10px;
+    align-items: flex-end; /* Abre no estilo 'bottom sheet' moderno em smartphones */
+  }
+
+  .modal-content {
+    max-width: 100%;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    padding: 24px 16px env(safe-area-inset-bottom, 20px) 16px;
+    max-height: 92vh;
+  }
+
+  /* Botões e toques no celular */
+  .btn {
+    padding: 9px 14px;
+    font-size: 0.88rem;
+  }
+
+  /* Inputs confortáveis para toque no celular */
+  .form-control {
+    font-size: 16px; /* Evita que o iOS Safari dê zoom automático indesejado */
+    padding: 11px 14px;
+  }
+
+  /* Cards e métricas */
+  .glass-card {
+    padding: 16px;
+    border-radius: var(--radius-md);
+  }
+
+  /* Ocultar textos longos apenas se muito estreito */
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: 1.1rem !important;
+  }
+
+  h2 {
+    font-size: 1.25rem !important;
+  }
+
+  /* Grid com 1 coluna perfeita em telas pequenas */
+  .grid-mobile-1 {
+    grid-template-columns: 1fr !important;
+  }
+}

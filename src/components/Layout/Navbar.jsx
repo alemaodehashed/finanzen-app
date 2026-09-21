@@ -1,13 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Sparkles, Download, LogOut, Smartphone, CheckCircle, Crown, Settings, Shield } from 'lucide-react';
+import { PWAInstallModal } from './PWAInstallModal';
 
 export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbout, onExportCSV, onPrint }) => {
   const { user, profile, isAdmin, signOut } = useAuth();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
   useEffect(() => {
+    // Detecta se já está rodando como aplicativo instalado
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+    if (isStandalone) {
+      setIsInstalled(true);
+    }
+
     const handleBeforeInstall = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -17,17 +27,8 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
 
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setIsInstalled(true);
-      }
-      setDeferredPrompt(null);
-    } else {
-      alert('Para instalar no celular:\n- No iPhone: toque em Compartilhar e selecione "Adicionar à Tela de Início".\n- No Android: toque no menu (três pontinhos) e selecione "Instalar aplicativo".');
-    }
+  const handleInstallClick = () => {
+    setIsInstallModalOpen(true);
   };
 
   return (
@@ -85,16 +86,27 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
 
         {/* Ações e Usuário */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          {/* Botão PWA Instalar */}
+          {/* Botão PWA Instalar no Celular */}
           {!isInstalled && (
             <button
+              type="button"
               onClick={handleInstallClick}
-              className="btn btn-secondary btn-sm"
-              title="Instalar no Celular"
-              style={{ borderColor: 'rgba(16, 185, 129, 0.4)', color: 'var(--primary)' }}
+              className="btn btn-sm"
+              title="Instalar no Celular (Aplicativo PWA)"
+              style={{
+                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.15))',
+                border: '1px solid rgba(16, 185, 129, 0.45)',
+                color: '#10b981',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)',
+              }}
             >
               <Smartphone size={15} />
-              <span className="hide-mobile">Instalar no Celular</span>
+              <span>Instalar App</span>
             </button>
           )}
 
@@ -180,6 +192,14 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
           )}
         </div>
       </div>
+
+      {/* Modal de Instalação do Aplicativo (PWA) */}
+      <PWAInstallModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+        deferredPrompt={deferredPrompt}
+        onInstalled={() => setIsInstalled(true)}
+      />
     </header>
   );
 };
