@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { FinanceProvider, useFinance } from './contexts/FinanceContext';
 import { Navbar } from './components/Layout/Navbar';
@@ -25,6 +25,27 @@ const MainApp = () => {
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [isContributeModalOpen, setIsContributeModalOpen] = useState(false);
+
+  // Pop-up automático de contribuição: ao fazer login e a cada 7 minutos logado
+  useEffect(() => {
+    if (!user) return;
+
+    // Dispara 1.5s após autenticar/carregar sessão
+    const initialTimer = setTimeout(() => {
+      setIsContributeModalOpen(true);
+    }, 1500);
+
+    // E repete a cada 7 minutos (7 * 60 * 1000 ms = 420.000 ms)
+    const SEVEN_MINUTES = 7 * 60 * 1000;
+    const intervalTimer = setInterval(() => {
+      setIsContributeModalOpen(true);
+    }, SEVEN_MINUTES);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(intervalTimer);
+    };
+  }, [user?.id]);
 
   const handleOpenAuth = (initialMode = 'login') => {
     setAuthInitialMode(initialMode === 'register' ? 'register' : 'login');
