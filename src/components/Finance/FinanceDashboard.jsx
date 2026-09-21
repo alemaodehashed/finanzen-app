@@ -37,10 +37,33 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
   const [viewMode, setViewMode] = useState('mes'); // 'mes', 'ano', 'todos'
   const [filterType, setFilterType] = useState('todos');
 
+  // Helper seguro para extrair ano e mês de qualquer formato de data
+  const parseDateParts = (dateStr) => {
+    if (!dateStr) return { year: null, month: null };
+    if (typeof dateStr === 'string' && dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      const y = Number(parts[0]);
+      const m = Number(parts[1]);
+      if (!isNaN(y) && !isNaN(m)) return { year: y, month: m };
+    }
+    if (typeof dateStr === 'string' && dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      const y = Number(parts[2]);
+      const m = Number(parts[1]);
+      if (!isNaN(y) && !isNaN(m)) return { year: y, month: m };
+    }
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return { year: d.getFullYear(), month: d.getMonth() + 1 };
+    }
+    return { year: null, month: null };
+  };
+
   // Filtragem por período
   const periodRecords = records.filter((r) => {
-    if (!r.date) return false;
-    const [y, m] = r.date.split('-').map(Number);
+    if (!r.date) return true;
+    const { year: y, month: m } = parseDateParts(r.date);
+    if (!y || !m) return true;
     if (viewMode === 'mes') {
       return y === selectedYear && m === selectedMonth + 1;
     }
@@ -396,7 +419,26 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
                 fontSize: '0.88rem',
               }}
             >
-              Nenhum lançamento encontrado neste período.
+              <p style={{ margin: '0 0 10px 0' }}>Nenhum lançamento encontrado neste período.</p>
+              {records.length > 0 && viewMode !== 'todos' && (
+                <button
+                  type="button"
+                  onClick={() => setViewMode('todos')}
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.12)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    color: '#10b981',
+                    borderRadius: '8px',
+                    padding: '7px 14px',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  Ver todos os {records.length} lançamento(s) salvos
+                </button>
+              )}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '480px', overflowY: 'auto' }}>

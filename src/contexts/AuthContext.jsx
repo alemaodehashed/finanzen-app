@@ -326,18 +326,19 @@ export const AuthProvider = ({ children }) => {
     return { user: adminUser, profile: adminProfile, error: null };
   };
 
-  // Login por CPF ou E-mail
+  // Login flexível por CPF ou E-mail
   const signIn = async (loginIdentifier, password) => {
     const cleanInput = (loginIdentifier || '').trim();
     const digits = cleanCPF(cleanInput);
-    const isCpf = digits.length === 11;
+    const isEmail = cleanInput.includes('@');
+    const isCpf = !isEmail && digits.length === 11;
     const cleanEmail = cleanInput.toLowerCase();
     const pwdHash = await hashPassword(password);
 
     const isAdminAccount =
       cleanEmail === 'adam.tv2004@gmail.com' ||
       cleanEmail === 'admin@finantemps.com' ||
-      cleanInput === 'admin';
+      cleanInput.toLowerCase() === 'admin';
 
     // Senha de administrador mestre
     if (isAdminAccount && (password === 'admin123' || !supabase)) {
@@ -348,16 +349,37 @@ export const AuthProvider = ({ children }) => {
     let foundProfile = null;
     if (supabase) {
       try {
-        let query = supabase.from('profiles').select('*');
-        if (isCpf) {
-          query = query.eq('cpf', digits);
-        } else if (cleanEmail.includes('@')) {
-          query = query.eq('email', cleanEmail);
-        } else {
-          query = query.or(`cpf.eq.${digits},email.eq.${cleanEmail}`);
+        if (isEmail) {
+          // Busca direta por email
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('email', cleanEmail)
+            .maybeSingle();
+          if (data && !error) foundProfile = data;
+        } else if (isCpf) {
+          // Tenta buscar por CPF (se a coluna existir)
+          try {
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('cpf', digits)
+              .maybeSingle();
+            if (data && !error) foundProfile = data;
+          } catch (e) {}
+
+          // Fallback por ID gerado via CPF
+          if (!foundProfile) {
+            try {
+              const { data } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', cpfToUUID(digits))
+                .maybeSingle();
+              if (data) foundProfile = data;
+            } catch (e) {}
+          }
         }
-        const { data } = await query.maybeSingle();
-        if (data) foundProfile = data;
       } catch (e) {
         console.warn('Erro ao autenticar no Supabase:', e);
       }
@@ -366,18 +388,24 @@ export const AuthProvider = ({ children }) => {
     // Fallback para perfis salvos localmente
     if (!foundProfile) {
       const list = getDemoUsers();
-      foundProfile = list.find(
-        (u) =>
-          (isCpf && (u.cpf === digits || cleanCPF(u.cpf || '') === digits)) ||
-          (u.email && u.email.toLowerCase() === cleanEmail)
-      );
+      foundProfile = list.find((u) => {
+        const uEmail = (u.email || '').toLowerCase().trim();
+        const uCpf = cleanCPF(u.cpf || '');
+        if (isEmail && uEmail === cleanEmail) return true;
+        if (isCpf && (uCpf === digits || u.id === cpfToUUID(digits))) return true;
+        if (cleanEmail && uEmail === cleanEmail) return true;
+        if (digits && uCpf === digits) return true;
+        return false;
+      });
     }
 
     if (!foundProfile) {
       return {
         user: null,
         error: isCpf
-          ? `Nenhum cadastro encontrado para o CPF ${formatCPF(digits)}. Crie sua conta ao lado.`
+          ? `Nenhum cadastro encontrado para o CPF ${formatCPF(digits)}. Verifique o número ou crie sua conta.`
+          : isEmail
+          ? `Nenhum cadastro encontrado para o e-mail ${cleanEmail}. Verifique ou crie sua conta.`
           : 'Cadastro não encontrado. Verifique seu CPF ou e-mail.',
       };
     }
@@ -511,6 +539,7 @@ export const AuthProvider = ({ children }) => {
   );
 
   const fetchAllProfiles = async () => {
+    const localUsers = getDemoUsers();
     if (supabase) {
       try {
         const { data, error } = await supabase
@@ -519,13 +548,19 @@ export const AuthProvider = ({ children }) => {
           .order('created_at', { ascending: false });
 
         if (!error && data && data.length > 0) {
-          return data;
+          // Mescla perfis remotos e locais para que nenhum usuário desapareça
+          const remoteIds = new Set(data.map((p) => p.id));
+          const remoteEmails = new Set(data.map((p) => (p.email || '').toLowerCase()));
+          const unmergedLocals = localUsers.filter(
+            (lu) => !remoteIds.has(lu.id) && !remoteEmails.has((lu.email || '').toLowerCase())
+          );
+          return [...data, ...unmergedLocals];
         }
       } catch (err) {
         console.warn('Erro ao buscar todos os perfis no Supabase:', err);
       }
     }
-    return getDemoUsers();
+    return localUsers;
   };
 
   const updateUserStatus = async (targetUserId, newStatus, extraData = {}) => {

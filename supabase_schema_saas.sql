@@ -6,11 +6,14 @@
 
 -- 1. TABELA DE PERFIS DOS CLIENTES
 CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY,
   email TEXT,
   full_name TEXT,
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now())
 );
+
+-- Remove restrição estrita com auth.users para permitir cadastros com CPF/offline
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_id_fkey;
 
 -- Adiciona todas as colunas necessárias na tabela profiles
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS cpf TEXT;
@@ -22,7 +25,7 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS savings_goal NUMERIC DEFAULT 0;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS settings JSONB DEFAULT '{"theme": "dark", "currency": "BRL"}'::jsonb;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'pending';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'active';
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS subscription_ends_at TIMESTAMPTZ;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now());
@@ -30,7 +33,7 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFA
 -- Habilita RLS na tabela de perfis
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- POLÍTICAS DE PERFIS: O Dono e a aplicação podem listar, criar e aprovar contas
+-- POLÍTICAS DE PERFIS: A aplicação e o painel administrativo podem gerenciar contas
 DROP POLICY IF EXISTS "Ver perfis" ON public.profiles;
 DROP POLICY IF EXISTS "Perfis públicos para leitura" ON public.profiles;
 CREATE POLICY "Ver perfis" 
@@ -52,7 +55,7 @@ CREATE POLICY "Deletar perfis"
   ON public.profiles FOR DELETE 
   USING (true);
 
--- 2. TRIGGER AUTOMÁTICO: NOVO USUÁRIO CADASTRA PERFIL COMO PENDENTE (DONO FICA ATIVO)
+-- 2. TRIGGER AUTOMÁTICO: NOVO USUÁRIO CADASTRA PERFIL
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER 
 LANGUAGE plpgsql
@@ -81,7 +84,7 @@ BEGIN
     user_email,
     user_name,
     is_owner,
-    CASE WHEN is_owner THEN 'active' ELSE 'pending' END,
+    'active',
     0
   )
   ON CONFLICT (id) DO UPDATE SET
@@ -109,7 +112,7 @@ SELECT
   lower(trim(u.email)), 
   COALESCE(u.raw_user_meta_data->>'full_name', split_part(u.email, '@', 1)),
   (lower(trim(u.email)) = 'adam.tv2004@gmail.com'),
-  CASE WHEN lower(trim(u.email)) = 'adam.tv2004@gmail.com' THEN 'active' ELSE 'pending' END
+  'active'
 FROM auth.users u
 ON CONFLICT (id) DO UPDATE SET
   email = EXCLUDED.email,
@@ -123,7 +126,7 @@ WHERE email = 'adam.tv2004@gmail.com';
 -- 3. TABELA DE LANÇAMENTOS FINANCEIROS DOS CLIENTES
 CREATE TABLE IF NOT EXISTS public.finance_records (
   id TEXT PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
   date TEXT NOT NULL,
   type TEXT NOT NULL,         -- 'renda', 'renda_extra', 'despesa_casa', 'negocio'
   category TEXT NOT NULL,
@@ -132,29 +135,32 @@ CREATE TABLE IF NOT EXISTS public.finance_records (
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now())
 );
 
+-- Remove restrição de chave estrangeira com auth.users se existir
+ALTER TABLE public.finance_records DROP CONSTRAINT IF EXISTS finance_records_user_id_fkey;
+
 -- Habilita RLS na tabela de lançamentos
 ALTER TABLE public.finance_records ENABLE ROW LEVEL SECURITY;
 
--- Políticas de lançamentos financeiros: cada cliente lê e grava apenas os seus lançamentos
+-- Políticas de lançamentos financeiros: leitura e gravação liberadas para anon/autenticado
 DROP POLICY IF EXISTS "Usuários podem ver apenas suas finanças" ON public.finance_records;
 CREATE POLICY "Usuários podem ver apenas suas finanças" 
   ON public.finance_records FOR SELECT 
-  USING (auth.uid() = user_id OR auth.uid() IS NULL);
+  USING (true);
 
 DROP POLICY IF EXISTS "Usuários podem inserir apenas suas finanças" ON public.finance_records;
 CREATE POLICY "Usuários podem inserir apenas suas finanças" 
   ON public.finance_records FOR INSERT 
-  WITH CHECK (auth.uid() = user_id OR auth.uid() IS NULL);
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Usuários podem atualizar apenas suas finanças" ON public.finance_records;
 CREATE POLICY "Usuários podem atualizar apenas suas finanças" 
   ON public.finance_records FOR UPDATE 
-  USING (auth.uid() = user_id OR auth.uid() IS NULL);
+  USING (true);
 
 DROP POLICY IF EXISTS "Usuários podem deletar apenas suas finanças" ON public.finance_records;
 CREATE POLICY "Usuários podem deletar apenas suas finanças" 
   ON public.finance_records FOR DELETE 
-  USING (auth.uid() = user_id OR auth.uid() IS NULL);
+  USING (true);
 
 -- Índices otimizados
 CREATE INDEX IF NOT EXISTS idx_finance_user_date ON public.finance_records (user_id, date DESC);

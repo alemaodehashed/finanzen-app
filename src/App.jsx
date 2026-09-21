@@ -11,6 +11,7 @@ import { AboutMissionModal } from './components/About/AboutMissionModal';
 import { ContributeModal } from './components/Contribute/ContributeModal';
 import { PaywallBanner } from './components/Subscription/PaywallBanner';
 import { PendingApprovalView } from './components/Auth/PendingApprovalView';
+import { InstallAppPopup } from './components/Layout/InstallAppPopup';
 import { exportToCSV, printReport } from './utils/exportData';
 
 const MainApp = () => {
@@ -26,25 +27,22 @@ const MainApp = () => {
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [isContributeModalOpen, setIsContributeModalOpen] = useState(false);
 
-  // Pop-up automático de contribuição: ao fazer login e a cada 7 minutos logado
+  // Pop-up automático de contribuição: aparece UMA VEZ ao logar e para de aparecer
   useEffect(() => {
     if (!user) return;
 
-    // Dispara 1.5s após autenticar/carregar sessão
-    const initialTimer = setTimeout(() => {
-      setIsContributeModalOpen(true);
-    }, 1500);
+    const sessionKey = `finantemps_pix_shown_${user.id || user.cpf || 'logged'}`;
+    const alreadyShown = sessionStorage.getItem(sessionKey);
 
-    // E repete a cada 7 minutos (7 * 60 * 1000 ms = 420.000 ms)
-    const SEVEN_MINUTES = 7 * 60 * 1000;
-    const intervalTimer = setInterval(() => {
-      setIsContributeModalOpen(true);
-    }, SEVEN_MINUTES);
+    if (!alreadyShown) {
+      // Dispara uma única vez 1.5s após autenticar
+      const timer = setTimeout(() => {
+        setIsContributeModalOpen(true);
+        sessionStorage.setItem(sessionKey, 'true');
+      }, 1500);
 
-    return () => {
-      clearTimeout(initialTimer);
-      clearInterval(intervalTimer);
-    };
+      return () => clearTimeout(timer);
+    }
   }, [user?.id]);
 
   const handleOpenAuth = (initialMode = 'login') => {
@@ -120,6 +118,9 @@ const MainApp = () => {
           isOpen={isContributeModalOpen}
           onClose={() => setIsContributeModalOpen(false)}
         />
+
+        {/* Pop-up Flutuante Inferior Direito de Instalação (APK Android / Passo a passo iOS) */}
+        <InstallAppPopup />
       </main>
 
       <footer

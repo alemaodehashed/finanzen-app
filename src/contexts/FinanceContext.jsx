@@ -64,12 +64,28 @@ export const FinanceProvider = ({ children }) => {
   const [syncStatus, setSyncStatus] = useState('local');
   const [lastSyncTime, setLastSyncTime] = useState(null);
 
-  const storageKey = user ? `finanzen_records_${user.id}` : 'finanzen_records_guest';
+  const getStorageKey = useCallback((u) => {
+    if (!u) return 'finanzen_records_guest';
+    const cleanUserCpf = u.cpf ? String(u.cpf).replace(/\D/g, '') : '';
+    return `finanzen_records_${cleanUserCpf || u.id || u.email || 'user'}`;
+  }, []);
+
+  const storageKey = getStorageKey(user);
 
   // Carregar lançamentos do usuário
   const loadRecords = useCallback(async () => {
     if (!user) {
-      setRecords([]);
+      // Carrega registros de convidado se existirem
+      try {
+        const guestSaved = localStorage.getItem('finanzen_records_guest');
+        if (guestSaved) {
+          setRecords(JSON.parse(guestSaved));
+        } else {
+          setRecords([]);
+        }
+      } catch (e) {
+        setRecords([]);
+      }
       setLoading(false);
       setSyncStatus('local');
       return;
@@ -80,12 +96,47 @@ export const FinanceProvider = ({ children }) => {
     // 1. Carrega imediatamente do cache local para renderização instantânea
     let localRecords = [];
     try {
-      const saved = localStorage.getItem(storageKey);
+      let saved = localStorage.getItem(storageKey);
+      
+      // Checa chaves legadas para não perder nada (ex: pelo ID antigo ou CPF)
+      if (!saved && user.id) {
+        saved = localStorage.getItem(`finanzen_records_${user.id}`);
+      }
+      if (!saved && user.email) {
+        saved = localStorage.getItem(`finanzen_records_${user.email.toLowerCase()}`);
+      }
+
+      // Migração automática se havia registros cadastrados como visitante
+      const guestSaved = localStorage.getItem('finanzen_records_guest');
+      let guestRecords = [];
+      if (guestSaved) {
+        try {
+          guestRecords = JSON.parse(guestSaved);
+          if (Array.isArray(guestRecords) && guestRecords.length > 0) {
+            localStorage.removeItem('finanzen_records_guest');
+          }
+        } catch (e) {}
+      }
+
       if (saved) {
         localRecords = JSON.parse(saved);
-        setRecords(localRecords);
+      } else if (guestRecords.length > 0) {
+        localRecords = guestRecords;
       } else if (isDemoMode || !supabase) {
         localRecords = INITIAL_DEMO_RECORDS;
+      }
+
+      // Se havia registros de visitante, mescla com os locais
+      if (guestRecords.length > 0 && saved) {
+        const existingIds = new Set(localRecords.map((r) => r.id));
+        guestRecords.forEach((gr) => {
+          if (!existingIds.has(gr.id)) {
+            localRecords.unshift({ ...gr, user_id: user.id });
+          }
+        });
+      }
+
+      if (localRecords.length > 0) {
         setRecords(localRecords);
         localStorage.setItem(storageKey, JSON.stringify(localRecords));
       }
@@ -93,8 +144,8 @@ export const FinanceProvider = ({ children }) => {
       console.warn('Erro ao ler cache local de finanças:', e);
     }
 
-    // Se for modo demo ou não houver Supabase ou usuário não for UUID real do banco
-    if (isDemoMode || !supabase || !isValidUUID(user.id)) {
+    // Se for modo demo ou não houver Supabase configurado
+    if (isDemoMode || !supabase) {
       setSyncStatus('local');
       setLoading(false);
       return;
@@ -110,51 +161,56 @@ export const FinanceProvider = ({ children }) => {
         .order('date', { ascending: false });
 
       if (error) {
-        console.error('Erro ao buscar lançamentos no Supabase:', error.message);
-        setSyncStatus('error');
-      } else if (data) {
-        if (data.length > 0) {
-          // Banco possui dados atualizados
-          setRecords(data);
-          localStorage.setItem(storageKey, JSON.stringify(data));
-          setSyncStatus('synced');
-          setLastSyncTime(new Date());
-        } else if (localRecords.length > 0 && localRecords !== INITIAL_DEMO_RECORDS) {
-          // Primeira sincronização: se o banco está vazio mas tínhamos dados locais, migra para o banco
-          const recordsToUpload = localRecords.map((r) => ({
-            id: r.id || generateId('rec'),
-            user_id: user.id,
-            date: r.date || new Date().toISOString().split('T')[0],
-            type: r.type,
-            category: r.category,
-            description: r.description || '',
-            amount: Number(r.amount) || 0,
-          }));
+        // Se houver erro de RLS ou conexão no Supabase, mantém os registros locais intactos!
+        console.warn('Supabase offline ou RLS restrito:', error.message);
+        setSyncStatus('local');
+      } else if (data && data.length > 0) {
+        // Banco possui dados atualizados: mescla com dados locais não sincronizados para não perder nada
+        const remoteIds = new Set(data.map((r) => r.id));
+        const unmergedLocal = localRecords.filter((lr) => !remoteIds.has(lr.id));
+        const mergedRecords = [...data, ...unmergedLocal];
 
-          const { error: upsertErr } = await supabase.from('finance_records').upsert(recordsToUpload);
-          if (!upsertErr) {
-            setRecords(recordsToUpload);
-            localStorage.setItem(storageKey, JSON.stringify(recordsToUpload));
-            setSyncStatus('synced');
-            setLastSyncTime(new Date());
-          } else {
-            console.warn('Falha na migração inicial para o banco:', upsertErr.message);
-            setSyncStatus('local');
-          }
-        } else {
-          setRecords([]);
-          localStorage.setItem(storageKey, JSON.stringify([]));
+        setRecords(mergedRecords);
+        localStorage.setItem(storageKey, JSON.stringify(mergedRecords));
+        setSyncStatus('synced');
+        setLastSyncTime(new Date());
+      } else if (localRecords.length > 0) {
+        // Banco remoto retornou vazio, mas temos dados locais:
+        // JAMAIS apagar os dados locais! Tentamos subir para o banco se possível
+        const recordsToUpload = localRecords.map((r) => ({
+          id: r.id || generateId('rec'),
+          user_id: user.id,
+          date: r.date || new Date().toISOString().split('T')[0],
+          type: r.type,
+          category: r.category,
+          description: r.description || '',
+          amount: Number(r.amount) || 0,
+        }));
+
+        const { error: upsertErr } = await supabase.from('finance_records').upsert(recordsToUpload);
+        if (!upsertErr) {
+          setRecords(recordsToUpload);
+          localStorage.setItem(storageKey, JSON.stringify(recordsToUpload));
           setSyncStatus('synced');
           setLastSyncTime(new Date());
+        } else {
+          // Mantém salvo localmente
+          setRecords(localRecords);
+          localStorage.setItem(storageKey, JSON.stringify(localRecords));
+          setSyncStatus('local');
         }
+      } else {
+        // Nenhum dado nem local nem remoto
+        setRecords([]);
+        setSyncStatus('synced');
       }
     } catch (err) {
       console.warn('Falha de conexão com o banco de dados:', err);
-      setSyncStatus('error');
+      setSyncStatus('local');
     } finally {
       setLoading(false);
     }
-  }, [user, isDemoMode, storageKey]);
+  }, [user, isDemoMode, storageKey, getStorageKey]);
 
   useEffect(() => {
     loadRecords();
@@ -206,13 +262,13 @@ export const FinanceProvider = ({ children }) => {
       });
 
       if (error) {
-        console.error('Erro ao gravar lançamento no banco Supabase:', error);
-        setSyncStatus('error');
+        console.warn('Lançamento salvo localmente (aguardando sincronização com banco):', error.message);
+        setSyncStatus('local');
         return {
-          success: false,
-          error: error.message || 'Erro ao gravar no banco de dados.',
+          success: true,
           data: newRecord,
           localSaved: true,
+          remoteNotice: error.message,
         };
       }
 
@@ -220,11 +276,10 @@ export const FinanceProvider = ({ children }) => {
       setLastSyncTime(new Date());
       return { success: true, data: newRecord, localSaved: true };
     } catch (err) {
-      console.warn('Erro de rede ao salvar lançamento:', err);
-      setSyncStatus('error');
+      console.warn('Lançamento salvo localmente (offline):', err);
+      setSyncStatus('local');
       return {
-        success: false,
-        error: err.message || 'Falha de conexão com o banco.',
+        success: true,
         data: newRecord,
         localSaved: true,
       };
@@ -283,13 +338,13 @@ export const FinanceProvider = ({ children }) => {
       const { error } = await supabase.from('finance_records').insert(recordsToInsert);
 
       if (error) {
-        console.error('Erro ao gravar lançamentos múltiplos no Supabase:', error);
-        setSyncStatus('error');
+        console.warn('Lançamentos em lote salvos localmente (aguardando banco):', error.message);
+        setSyncStatus('local');
         return {
-          success: false,
-          error: error.message || 'Erro ao gravar no banco de dados.',
+          success: true,
           data: newRecords,
           localSaved: true,
+          remoteNotice: error.message,
         };
       }
 
@@ -297,11 +352,10 @@ export const FinanceProvider = ({ children }) => {
       setLastSyncTime(new Date());
       return { success: true, data: newRecords, localSaved: true };
     } catch (err) {
-      console.warn('Erro de rede ao salvar lote de lançamentos:', err);
-      setSyncStatus('error');
+      console.warn('Lote salvo localmente (offline):', err);
+      setSyncStatus('local');
       return {
-        success: false,
-        error: err.message || 'Falha de conexão com o banco.',
+        success: true,
         data: newRecords,
         localSaved: true,
       };

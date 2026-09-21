@@ -58,8 +58,12 @@ export const AuthModal = ({ isOpen, onClose, initialEmail = '', initialMode = 'l
 
   const handleLoginIdentifierChange = (e) => {
     const val = e.target.value;
-    // Se for apenas números, formata como CPF automaticamente
-    if (/^\d+$/.test(val.replace(/\D/g, '')) && !val.includes('@') && val.replace(/\D/g, '').length <= 11) {
+    // Se o valor contiver letras ou '@', trata livremente como e-mail sem mascarar como CPF
+    const hasLettersOrAt = /[a-zA-Z@]/.test(val);
+    const digitsOnly = val.replace(/\D/g, '');
+
+    // Aplica máscara de CPF apenas se o usuário estiver digitando estritamente números e até 11 dígitos
+    if (!hasLettersOrAt && digitsOnly.length > 0 && digitsOnly.length <= 11) {
       setLoginIdentifier(formatCPF(val));
     } else {
       setLoginIdentifier(val);
