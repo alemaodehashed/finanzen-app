@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useFinance } from '../../contexts/FinanceContext';
-import { X, Plus, Home, DollarSign, Sparkles, Briefcase } from 'lucide-react';
+import { X, Plus, Home, DollarSign, Sparkles, Briefcase, Repeat, Calendar, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 const CATEGORIES = {
@@ -43,8 +43,13 @@ const CATEGORIES = {
   ],
 };
 
+const MONTH_NAMES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+];
+
 export const FinanceFormModal = ({ isOpen, onClose }) => {
-  const { addRecord } = useFinance();
+  const { addRecord, addRecords } = useFinance();
 
   const [formData, setFormData] = useState({
     type: 'despesa_casa',
@@ -54,6 +59,8 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
     date: new Date().toISOString().split('T')[0],
   });
 
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [monthsCount, setMonthsCount] = useState(10);
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
@@ -66,6 +73,36 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
     }));
   };
 
+  // Cálculo da previsão de meses de repetição
+  const getRecurrenceSummary = () => {
+    if (!formData.date) return null;
+    const [y, m, d] = formData.date.split('-').map(Number);
+    const count = Math.min(Math.max(Number(monthsCount) || 1, 1), 60);
+
+    const startDate = new Date(y, m - 1, 1);
+    const startMonthName = MONTH_NAMES[startDate.getMonth()];
+    const startYear = startDate.getFullYear();
+
+    const endDate = new Date(y, m - 1 + (count - 1), 1);
+    const endMonthName = MONTH_NAMES[endDate.getMonth()];
+    const endYear = endDate.getFullYear();
+
+    return {
+      count,
+      startText: `${startMonthName}/${startYear}`,
+      endText: `${endMonthName}/${endYear}`,
+      day: d,
+    };
+  };
+
+  // Atalho para calcular meses até o fim do ano (Dezembro)
+  const setUntilEndOfYear = () => {
+    const [, m] = formData.date.split('-').map(Number);
+    const monthsUntilDec = Math.max(12 - m + 1, 1);
+    setMonthsCount(monthsUntilDec);
+    setIsRecurring(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.amount || Number(formData.amount) <= 0) {
@@ -74,10 +111,38 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
     }
 
     setLoading(true);
-    const result = await addRecord({
-      ...formData,
-      amount: Number(formData.amount),
-    });
+    let result;
+
+    if (isRecurring && Number(monthsCount) > 1) {
+      const count = Math.min(Math.max(Number(monthsCount) || 1, 2), 60);
+      const [year, month, day] = formData.date.split('-').map(Number);
+      const recordsToCreate = [];
+
+      for (let i = 0; i < count; i++) {
+        const target = new Date(year, month - 1 + i, 1);
+        const targetYear = target.getFullYear();
+        const targetMonth = target.getMonth();
+        const maxDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+        const targetDay = Math.min(day, maxDay);
+        const dateStr = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+
+        recordsToCreate.push({
+          ...formData,
+          date: dateStr,
+          amount: Number(formData.amount),
+          description: `${formData.description.trim()} (${i + 1}/${count})`,
+          is_recurring: true,
+        });
+      }
+
+      result = await addRecords(recordsToCreate);
+    } else {
+      result = await addRecord({
+        ...formData,
+        amount: Number(formData.amount),
+      });
+    }
+
     setLoading(false);
 
     if (result && !result.success && !result.localSaved) {
@@ -104,6 +169,8 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
       amount: '',
       date: new Date().toISOString().split('T')[0],
     });
+    setIsRecurring(false);
+    setMonthsCount(10);
 
     onClose();
   };
@@ -223,7 +290,7 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Data</label>
+            <label className="form-label">Data de Início</label>
             <input
               type="date"
               className="form-control"
@@ -231,6 +298,164 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               required
             />
+          </div>
+
+          {/* Opção de Gasto Fixo / Recorrente por Meses */}
+          <div
+            style={{
+              marginTop: '14px',
+              marginBottom: '16px',
+              padding: '14px',
+              borderRadius: 'var(--radius-md)',
+              background: isRecurring ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+              border: isRecurring ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid var(--border-color)',
+              transition: 'all 0.25s ease',
+            }}
+          >
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                userSelect: 'none',
+                margin: 0,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: isRecurring ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: isRecurring ? '#10b981' : 'var(--text-dim)',
+                  }}
+                >
+                  <Repeat size={18} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>
+                    Gasto Fixo / Recorrente
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                    Repetir lançamento por múltiplos meses
+                  </div>
+                </div>
+              </div>
+
+              <input
+                type="checkbox"
+                checked={isRecurring}
+                onChange={(e) => setIsRecurring(e.target.checked)}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  accentColor: '#10b981',
+                  cursor: 'pointer',
+                }}
+              />
+            </label>
+
+            {isRecurring && (
+              <div
+                style={{
+                  marginTop: '14px',
+                  paddingTop: '12px',
+                  borderTop: '1px dashed rgba(255, 255, 255, 0.1)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label className="form-label" style={{ margin: 0, fontSize: '0.82rem' }}>
+                    Quantidade de Meses:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={setUntilEndOfYear}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--primary)',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      padding: 0,
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Até Dezembro deste ano
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    min="2"
+                    max="60"
+                    className="form-control"
+                    style={{ width: '90px', textAlign: 'center', fontWeight: 700, fontSize: '1.05rem' }}
+                    value={monthsCount}
+                    onChange={(e) => setMonthsCount(Math.max(1, Number(e.target.value)))}
+                    required={isRecurring}
+                  />
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>meses seguidos</span>
+                </div>
+
+                {/* Atalhos rápidos de meses */}
+                <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
+                  {[3, 6, 10, 12, 24].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setMonthsCount(m)}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.74rem',
+                        fontWeight: 600,
+                        border: Number(monthsCount) === m ? '1px solid #10b981' : '1px solid var(--border-color)',
+                        background: Number(monthsCount) === m ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+                        color: Number(monthsCount) === m ? '#fff' : 'var(--text-dim)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {m} meses
+                    </button>
+                  ))}
+                </div>
+
+                {/* Preview em tempo real */}
+                {(() => {
+                  const summary = getRecurrenceSummary();
+                  if (!summary) return null;
+                  return (
+                    <div
+                      style={{
+                        marginTop: '12px',
+                        padding: '10px 12px',
+                        background: 'rgba(0, 0, 0, 0.25)',
+                        borderRadius: '8px',
+                        fontSize: '0.78rem',
+                        color: '#d1fae5',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '8px',
+                      }}
+                    >
+                      <Calendar size={16} color="#10b981" style={{ flexShrink: 0, marginTop: '2px' }} />
+                      <div>
+                        Serão criados <strong>{summary.count} lançamentos mensais</strong> (dia {summary.day}) de{' '}
+                        <strong style={{ color: '#34d399' }}>{summary.startText}</strong> até{' '}
+                        <strong style={{ color: '#34d399' }}>{summary.endText}</strong>.
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>

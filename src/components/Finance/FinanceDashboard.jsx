@@ -498,8 +498,23 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
                         )}
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#fff' }}>
-                          {item.description}
+                        <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{item.description}</span>
+                          {(item.is_recurring || /\(\d+\/\d+\)/.test(item.description)) && (
+                            <span
+                              style={{
+                                fontSize: '0.66rem',
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                                background: 'rgba(99, 102, 241, 0.2)',
+                                color: '#a5b4fc',
+                                border: '1px solid rgba(99, 102, 241, 0.35)',
+                                fontWeight: 500,
+                              }}
+                            >
+                              Fixo
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)' }}>
                           {item.category} • {formatDate(item.date)}

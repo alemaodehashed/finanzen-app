@@ -231,6 +231,83 @@ export const FinanceProvider = ({ children }) => {
     }
   };
 
+  // Adicionar múltiplos lançamentos (ex: despesas fixas recorrentes por vários meses)
+  const addRecords = async (recordsArray) => {
+    if (!user) {
+      return { success: false, error: 'Usuário não autenticado.' };
+    }
+
+    if (!recordsArray || recordsArray.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const newRecords = recordsArray.map((recordData) => ({
+      id: generateId('rec'),
+      user_id: user.id,
+      date: recordData.date || new Date().toISOString().split('T')[0],
+      amount: Number(recordData.amount) || 0,
+      type: recordData.type,
+      category: recordData.category,
+      description: recordData.description || '',
+      is_recurring: Boolean(recordData.is_recurring),
+      created_at: new Date().toISOString(),
+    }));
+
+    // Atualização otimista na memória e no cache local
+    setRecords((prev) => {
+      const updated = [...newRecords, ...prev];
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    if (isDemoMode || !supabase || !isValidUUID(user.id)) {
+      setSyncStatus('local');
+      return { success: true, data: newRecords, localOnly: true };
+    }
+
+    // Persistência segura no Supabase
+    setSyncStatus('syncing');
+    try {
+      const recordsToInsert = newRecords.map((r) => ({
+        id: r.id,
+        user_id: user.id,
+        date: r.date,
+        type: r.type,
+        category: r.category,
+        description: r.description,
+        amount: r.amount,
+      }));
+
+      const { error } = await supabase.from('finance_records').insert(recordsToInsert);
+
+      if (error) {
+        console.error('Erro ao gravar lançamentos múltiplos no Supabase:', error);
+        setSyncStatus('error');
+        return {
+          success: false,
+          error: error.message || 'Erro ao gravar no banco de dados.',
+          data: newRecords,
+          localSaved: true,
+        };
+      }
+
+      setSyncStatus('synced');
+      setLastSyncTime(new Date());
+      return { success: true, data: newRecords, localSaved: true };
+    } catch (err) {
+      console.warn('Erro de rede ao salvar lote de lançamentos:', err);
+      setSyncStatus('error');
+      return {
+        success: false,
+        error: err.message || 'Falha de conexão com o banco.',
+        data: newRecords,
+        localSaved: true,
+      };
+    }
+  };
+
   // Atualizar lançamento existente
   const updateRecord = async (id, updatedFields) => {
     if (!user) return { success: false, error: 'Não autenticado' };
@@ -300,6 +377,7 @@ export const FinanceProvider = ({ children }) => {
         lastSyncTime,
         refreshRecords: loadRecords,
         addRecord,
+        addRecords,
         updateRecord,
         deleteRecord,
       }}
