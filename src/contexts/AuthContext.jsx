@@ -629,6 +629,7 @@ export const AuthProvider = ({ children }) => {
     }
     localStorage.removeItem('finanzen_current_user');
     localStorage.removeItem('finanzen_admin_session');
+    localStorage.removeItem('finanzen_records_guest');
     setUser(null);
     setProfile(null);
   };

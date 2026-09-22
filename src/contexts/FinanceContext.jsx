@@ -5,57 +5,6 @@ import { generateId } from '../utils/formatters';
 
 const FinanceContext = createContext();
 
-const isValidUUID = (id) => {
-  return Boolean(
-    id &&
-    typeof id === 'string' &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
-  );
-};
-
-const INITIAL_DEMO_RECORDS = [
-  {
-    id: 'fin_demo_1',
-    date: new Date().toISOString().split('T')[0],
-    type: 'renda',
-    category: 'Salário / Emprego Fixo',
-    description: 'Salário Mensal',
-    amount: 3800,
-  },
-  {
-    id: 'fin_demo_2',
-    date: new Date().toISOString().split('T')[0],
-    type: 'renda_extra',
-    category: 'Vendas & Comissões',
-    description: 'Trabalho Extra / Venda',
-    amount: 650,
-  },
-  {
-    id: 'fin_demo_3',
-    date: new Date().toISOString().split('T')[0],
-    type: 'despesa_casa',
-    category: 'Supermercado & Feira',
-    description: 'Compras do mês',
-    amount: 1150,
-  },
-  {
-    id: 'fin_demo_4',
-    date: new Date().toISOString().split('T')[0],
-    type: 'despesa_casa',
-    category: 'Contas (Luz/Água/Net/Gás)',
-    description: 'Energia e Internet',
-    amount: 320,
-  },
-  {
-    id: 'fin_demo_5',
-    date: new Date().toISOString().split('T')[0],
-    type: 'despesa_casa',
-    category: 'Transporte / Combustível',
-    description: 'Gasolina',
-    amount: 220,
-  },
-];
-
 export const FinanceProvider = ({ children }) => {
   const { user, isDemoMode } = useAuth();
   const [records, setRecords] = useState([]);
@@ -64,102 +13,63 @@ export const FinanceProvider = ({ children }) => {
   const [syncStatus, setSyncStatus] = useState('local');
   const [lastSyncTime, setLastSyncTime] = useState(null);
 
+  // Chave de armazenamento estritamente isolada por ID único do usuário
+  // NUNCA cruza chaves com outros usuários ou convidados
   const getStorageKey = useCallback((u) => {
-    if (!u) return 'finanzen_records_guest';
-    const cleanUserCpf = u.cpf ? String(u.cpf).replace(/\D/g, '') : '';
-    return `finanzen_records_${cleanUserCpf || u.id || u.email || 'user'}`;
+    if (!u || !u.id) return null;
+    return `finanzen_records_user_${u.id}`;
   }, []);
 
   const storageKey = getStorageKey(user);
 
-  // Carregar lançamentos do usuário com sincronização bidirecional em nuvem
+  // Limpa imediatamente a memória se o usuário deslogar ou mudar de conta
+  useEffect(() => {
+    if (!user || !user.id) {
+      setRecords([]);
+      setSyncStatus('local');
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  // Carregar lançamentos do usuário com isolamento absoluto e sincronização em nuvem
   const loadRecords = useCallback(async (isSilent = false) => {
-    if (!user) {
-      // Carrega registros de convidado se existirem
-      try {
-        const guestSaved = localStorage.getItem('finanzen_records_guest');
-        if (guestSaved) {
-          setRecords(JSON.parse(guestSaved));
-        } else {
-          setRecords([]);
-        }
-      } catch (e) {
-        setRecords([]);
-      }
+    // Se não há usuário autenticado, zera tudo por segurança (NUNCA vaza dados)
+    if (!user || !user.id) {
+      setRecords([]);
       if (!isSilent) setLoading(false);
       setSyncStatus('local');
       return;
     }
 
+    const currentKey = `finanzen_records_user_${user.id}`;
     if (!isSilent) setLoading(true);
 
-    // 1. Carrega imediatamente do cache local para renderização instantânea
+    // 1. Carrega imediatamente apenas o cache local DESTE usuário específico
     let localRecords = [];
     try {
-      let saved = localStorage.getItem(storageKey);
-      const cleanUserCpf = user.cpf ? String(user.cpf).replace(/\D/g, '') : '';
-      
-      // Checa chaves legadas e alternativas para não perder nada do usuário
-      if (!saved && cleanUserCpf) {
-        saved = localStorage.getItem(`finanzen_records_${cleanUserCpf}`);
-      }
-      if (!saved && user.id) {
-        saved = localStorage.getItem(`finanzen_records_${user.id}`);
-      }
-      if (!saved && user.email) {
-        saved = localStorage.getItem(`finanzen_records_${user.email.toLowerCase()}`);
-      }
-      // Migração de chaves legadas do admin
-      if (!saved && (cleanUserCpf === '11657245969' || user.email?.toLowerCase().includes('lucasadam'))) {
-        saved = localStorage.getItem('finanzen_records_00000000-0000-0000-0000-000000000001');
-      }
-
-      // Migração automática se havia registros cadastrados como visitante
-      const guestSaved = localStorage.getItem('finanzen_records_guest');
-      let guestRecords = [];
-      if (guestSaved) {
-        try {
-          guestRecords = JSON.parse(guestSaved);
-          if (Array.isArray(guestRecords) && guestRecords.length > 0) {
-            localStorage.removeItem('finanzen_records_guest');
-          }
-        } catch (e) {}
-      }
-
+      const saved = localStorage.getItem(currentKey);
       if (saved) {
-        localRecords = JSON.parse(saved);
-      } else if (guestRecords.length > 0) {
-        localRecords = guestRecords;
-      } else if (isDemoMode || !supabase) {
-        localRecords = INITIAL_DEMO_RECORDS;
-      }
-
-      // Se havia registros de visitante, mescla com os locais
-      if (guestRecords.length > 0 && saved) {
-        const existingIds = new Set(localRecords.map((r) => r.id));
-        guestRecords.forEach((gr) => {
-          if (!existingIds.has(gr.id)) {
-            localRecords.unshift({ ...gr, user_id: user.id });
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Filtro rigoroso: garante que nenhum registro com user_id diferente entre na memória
+          localRecords = parsed.filter((r) => r.user_id === user.id);
+          if (!isSilent && localRecords.length > 0) {
+            setRecords(localRecords);
           }
-        });
-      }
-
-      if (localRecords.length > 0 && !isSilent) {
-        setRecords(localRecords);
-        localStorage.setItem(storageKey, JSON.stringify(localRecords));
+        }
       }
     } catch (e) {
       console.warn('Erro ao ler cache local de finanças:', e);
     }
 
-    // Se for modo demo ou não houver Supabase configurado
-    if (isDemoMode || !supabase) {
+    // Se não houver Supabase configurado
+    if (!supabase || isDemoMode) {
       setSyncStatus('local');
       if (!isSilent) setLoading(false);
       return;
     }
 
-    // 2. Busca lançamentos diretamente do banco de dados Supabase e sincroniza dados
+    // 2. Busca lançamentos diretamente do Supabase ESTRITAMENTE deste usuário (WHERE user_id = user.id)
     try {
       if (!isSilent) setSyncStatus('syncing');
       const { data, error } = await supabase
@@ -172,13 +82,15 @@ export const FinanceProvider = ({ children }) => {
         console.warn('Aviso ao consultar Supabase:', error.message);
         setSyncStatus('local');
       } else if (data) {
-        // Envia apenas lançamentos locais criados offline explicitamente marcados
-        const pendingUploads = localRecords.filter((r) => r._pendingUpload === true);
+        // Envia apenas lançamentos locais criados offline pertencentes ESTRITAMENTE a este usuário
+        const pendingUploads = localRecords.filter(
+          (r) => r._pendingUpload === true && r.user_id === user.id
+        );
         if (pendingUploads.length > 0) {
           try {
             const recordsToUpload = pendingUploads.map((r) => ({
               id: r.id || generateId('rec'),
-              user_id: user.id,
+              user_id: user.id, // Vínculo obrigatório do usuário
               date: r.date || new Date().toISOString().split('T')[0],
               type: r.type,
               category: r.category,
@@ -191,8 +103,10 @@ export const FinanceProvider = ({ children }) => {
           }
         }
 
-        setRecords(data);
-        localStorage.setItem(storageKey, JSON.stringify(data));
+        // Os dados oficiais do Supabase filtrados pelo ID do usuário são a verdade absoluta
+        const userStrictRecords = (data || []).filter((r) => r.user_id === user.id);
+        setRecords(userStrictRecords);
+        localStorage.setItem(currentKey, JSON.stringify(userStrictRecords));
         setSyncStatus('synced');
         setLastSyncTime(new Date());
       }
@@ -202,17 +116,21 @@ export const FinanceProvider = ({ children }) => {
     } finally {
       if (!isSilent) setLoading(false);
     }
-  }, [user, isDemoMode, storageKey]);
+  }, [user, isDemoMode]);
 
+  // Carrega ao montar ou quando o usuário logado mudar
   useEffect(() => {
-    loadRecords();
-  }, [loadRecords]);
+    if (user?.id) {
+      loadRecords();
+    }
+  }, [user?.id, loadRecords]);
 
   // Sincronização em tempo real (Supabase Realtime WebSocket + reativação no iPhone PWA)
+  // Canal e filtro estritamente isolados por user.id
   useEffect(() => {
     if (!supabase || !user?.id || isDemoMode) return;
 
-    // 1. Canal Realtime no Supabase para sincronização instantânea (< 300ms) entre iPhone e PC
+    // 1. Canal Realtime exclusivo: só recebe eventos onde user_id === user.id
     const channel = supabase
       .channel(`realtime_finance_${user.id}`)
       .on(
@@ -258,15 +176,16 @@ export const FinanceProvider = ({ children }) => {
     };
   }, [user?.id, isDemoMode, loadRecords]);
 
-  // Adicionar lançamento
+  // Adicionar lançamento isolado
   const addRecord = async (recordData) => {
-    if (!user) {
+    if (!user || !user.id) {
       return { success: false, error: 'Usuário não autenticado.' };
     }
 
+    const currentKey = `finanzen_records_user_${user.id}`;
     const newRecord = {
       id: generateId('rec'),
-      user_id: user.id,
+      user_id: user.id, // Vínculo estrito com o usuário logado
       date: recordData.date || new Date().toISOString().split('T')[0],
       amount: Number(recordData.amount) || 0,
       type: recordData.type,
@@ -275,27 +194,26 @@ export const FinanceProvider = ({ children }) => {
       created_at: new Date().toISOString(),
     };
 
-    // Atualização otimista na memória e no cache local
+    // Atualização otimista na memória e no cache local deste usuário
     setRecords((prev) => {
-      const updated = [newRecord, ...prev];
+      const updated = [newRecord, ...prev.filter((r) => r.user_id === user.id)];
       try {
-        localStorage.setItem(storageKey, JSON.stringify(updated));
+        localStorage.setItem(currentKey, JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
 
-    // Se estiver em modo demo ou sem Supabase configurado
     if (isDemoMode || !supabase || !user?.id) {
       setSyncStatus('local');
       return { success: true, data: newRecord, localOnly: true };
     }
 
-    // Persistência segura no banco de dados Supabase
+    // Persistência segura no banco de dados Supabase com user_id do usuário
     setSyncStatus('syncing');
     try {
       const { error } = await supabase.from('finance_records').insert({
         id: newRecord.id,
-        user_id: user.id,
+        user_id: user.id, // Estritamente do usuário
         date: newRecord.date,
         type: newRecord.type,
         category: newRecord.category,
@@ -328,19 +246,20 @@ export const FinanceProvider = ({ children }) => {
     }
   };
 
-  // Adicionar múltiplos lançamentos (ex: despesas fixas recorrentes por vários meses)
+  // Adicionar múltiplos lançamentos isolados
   const addRecords = async (recordsArray) => {
-    if (!user) {
+    if (!user || !user.id) {
       return { success: false, error: 'Usuário não autenticado.' };
     }
 
+    const currentKey = `finanzen_records_user_${user.id}`;
     if (!recordsArray || recordsArray.length === 0) {
       return { success: true, data: [] };
     }
 
     const newRecords = recordsArray.map((recordData) => ({
       id: generateId('rec'),
-      user_id: user.id,
+      user_id: user.id, // Vínculo estrito
       date: recordData.date || new Date().toISOString().split('T')[0],
       amount: Number(recordData.amount) || 0,
       type: recordData.type,
@@ -352,9 +271,9 @@ export const FinanceProvider = ({ children }) => {
 
     // Atualização otimista na memória e no cache local
     setRecords((prev) => {
-      const updated = [...newRecords, ...prev];
+      const updated = [...newRecords, ...prev.filter((r) => r.user_id === user.id)];
       try {
-        localStorage.setItem(storageKey, JSON.stringify(updated));
+        localStorage.setItem(currentKey, JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -369,7 +288,7 @@ export const FinanceProvider = ({ children }) => {
     try {
       const recordsToInsert = newRecords.map((r) => ({
         id: r.id,
-        user_id: user.id,
+        user_id: user.id, // Vínculo obrigatório
         date: r.date,
         type: r.type,
         category: r.category,
@@ -404,14 +323,17 @@ export const FinanceProvider = ({ children }) => {
     }
   };
 
-  // Atualizar lançamento existente
+  // Atualizar lançamento existente (com checagem estrita de ownership user_id)
   const updateRecord = async (id, updatedFields) => {
-    if (!user) return { success: false, error: 'Não autenticado' };
+    if (!user || !user.id) return { success: false, error: 'Não autenticado' };
 
+    const currentKey = `finanzen_records_user_${user.id}`;
     setRecords((prev) => {
-      const updated = prev.map((r) => (r.id === id ? { ...r, ...updatedFields } : r));
+      const updated = prev.map((r) =>
+        r.id === id && r.user_id === user.id ? { ...r, ...updatedFields } : r
+      );
       try {
-        localStorage.setItem(storageKey, JSON.stringify(updated));
+        localStorage.setItem(currentKey, JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -421,10 +343,12 @@ export const FinanceProvider = ({ children }) => {
     }
 
     try {
+      // Bloqueia qualquer atualização se o registro não pertencer ao usuário logado
       const { error } = await supabase
         .from('finance_records')
         .update(updatedFields)
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('Erro ao atualizar no banco:', error);
@@ -437,12 +361,15 @@ export const FinanceProvider = ({ children }) => {
     }
   };
 
-  // Deletar lançamento
+  // Deletar lançamento (com checagem estrita de ownership user_id)
   const deleteRecord = async (id) => {
+    if (!user || !user.id) return { success: false, error: 'Não autenticado' };
+
+    const currentKey = `finanzen_records_user_${user.id}`;
     setRecords((prev) => {
       const updated = prev.filter((r) => r.id !== id);
       try {
-        localStorage.setItem(storageKey, JSON.stringify(updated));
+        localStorage.setItem(currentKey, JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -452,7 +379,13 @@ export const FinanceProvider = ({ children }) => {
     }
 
     try {
-      const { error } = await supabase.from('finance_records').delete().eq('id', id);
+      // Bloqueia qualquer exclusão se o registro não pertencer ao usuário logado
+      const { error } = await supabase
+        .from('finance_records')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
       if (error) {
         console.error('Erro ao excluir no Supabase:', error.message);
         return { success: false, error: error.message };
