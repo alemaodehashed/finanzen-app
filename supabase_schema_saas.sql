@@ -38,10 +38,13 @@ CREATE TABLE IF NOT EXISTS public.finance_records (
   date TEXT NOT NULL,
   type TEXT NOT NULL,         -- 'renda', 'renda_extra', 'despesa_casa', 'negocio'
   category TEXT NOT NULL,
+  payment_method TEXT,        -- 'Pix', 'Débito', 'Crédito', 'Dinheiro'
   description TEXT NOT NULL,
   amount NUMERIC NOT NULL,
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now())
 );
+
+ALTER TABLE public.finance_records ADD COLUMN IF NOT EXISTS payment_method TEXT;
 
 -- Remove restrição de chave estrangeira com auth.users se existir
 ALTER TABLE public.finance_records DROP CONSTRAINT IF EXISTS finance_records_user_id_fkey;

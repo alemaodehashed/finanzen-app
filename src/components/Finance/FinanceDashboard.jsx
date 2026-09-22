@@ -39,6 +39,7 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [viewMode, setViewMode] = useState('mes'); // 'mes', 'ano', 'todos'
   const [filterType, setFilterType] = useState('todos');
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState('todos');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
@@ -83,10 +84,21 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
     new Set(periodRecords.map((r) => r.category).filter(Boolean))
   );
 
-  // Filtragem por tipo e por categoria
+  // Filtragem por tipo, categoria e forma de pagamento
   const displayRecords = periodRecords.filter((r) => {
     if (filterType !== 'todos' && r.type !== filterType) return false;
     if (selectedCategory && r.category !== selectedCategory) return false;
+    if (filterPaymentMethod !== 'todos') {
+      const pm = (r.payment_method || '').toLowerCase().trim();
+      const target = filterPaymentMethod.toLowerCase().trim();
+      if (target === 'debito' || target === 'débito') {
+        if (pm !== 'debito' && pm !== 'débito') return false;
+      } else if (target === 'credito' || target === 'crédito') {
+        if (pm !== 'credito' && pm !== 'crédito') return false;
+      } else if (pm !== target) {
+        return false;
+      }
+    }
     return true;
   });
 
@@ -117,6 +129,28 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
   const saldoFinal = totalEntradas - totalSaidas;
   const taxaInvestimento = totalEntradas > 0 ? ((totalInvestido / totalEntradas) * 100) : 0;
   const taxaPoupanca = totalEntradas > 0 ? ((saldoFinal / totalEntradas) * 100) : 0;
+
+  // Despesas do período e cálculos por Forma de Pagamento
+  const periodExpenses = periodRecords.filter(
+    (r) => r.type === 'despesa_casa' || r.type === 'negocio'
+  );
+
+  const getExpenseTotalByMethod = (targetMethod) => {
+    const target = targetMethod.toLowerCase();
+    return periodExpenses
+      .filter((r) => {
+        const pm = (r.payment_method || '').toLowerCase();
+        if (target === 'débito' || target === 'debito') return pm === 'débito' || pm === 'debito';
+        if (target === 'crédito' || target === 'credito') return pm === 'crédito' || pm === 'credito';
+        return pm === target;
+      })
+      .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+  };
+
+  const totalPix = getExpenseTotalByMethod('Pix');
+  const totalDebito = getExpenseTotalByMethod('Débito');
+  const totalCredito = getExpenseTotalByMethod('Crédito');
+  const totalDinheiro = getExpenseTotalByMethod('Dinheiro');
 
   // Navegação de mês
   const handlePrevMonth = () => {
@@ -513,6 +547,19 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
                 <option value="investimento">Investimentos</option>
               </select>
 
+              <select
+                className="form-control"
+                style={{ padding: '4px 10px', fontSize: '0.8rem', width: 'auto' }}
+                value={filterPaymentMethod}
+                onChange={(e) => setFilterPaymentMethod(e.target.value)}
+              >
+                <option value="todos">Todas Formas (Pgto)</option>
+                <option value="Pix">⚡ Pix</option>
+                <option value="Débito">💳 Débito</option>
+                <option value="Crédito">💳 Crédito</option>
+                <option value="Dinheiro">💵 Dinheiro</option>
+              </select>
+
               {availableCategories.length > 0 && (
                 <select
                   className="form-control"
@@ -527,6 +574,57 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
                 </select>
               )}
             </div>
+          </div>
+
+          {/* Barra de Controle Rápido por Forma de Pagamento */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+              gap: '8px',
+              marginBottom: '16px',
+            }}
+          >
+            {[
+              { id: 'Pix', label: 'Pix', icon: '⚡', color: '#10b981', total: totalPix },
+              { id: 'Débito', label: 'Débito', icon: '💳', color: '#3b82f6', total: totalDebito },
+              { id: 'Crédito', label: 'Crédito', icon: '💳', color: '#f43f5e', total: totalCredito },
+              { id: 'Dinheiro', label: 'Dinheiro', icon: '💵', color: '#f59e0b', total: totalDinheiro },
+            ].map((m) => {
+              const isActive = filterPaymentMethod === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setFilterPaymentMethod((curr) => (curr === m.id ? 'todos' : m.id))}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: isActive ? `1.5px solid ${m.color}` : '1px solid var(--border-color)',
+                    background: isActive ? `${m.color}22` : 'rgba(255, 255, 255, 0.03)',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                  }}
+                  title={`Clique para filtrar por ${m.label}`}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: m.color }}>
+                      {m.icon} {m.label}
+                    </span>
+                    {isActive && (
+                      <span style={{ fontSize: '0.62rem', fontWeight: 800, color: m.color }}>● Ativo</span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#fff' }}>
+                    {formatCurrency(m.total)}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Lista de Registros */}
@@ -605,8 +703,51 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
                         )}
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span>{item.description}</span>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span>{item.clean_description || (item.description || '').replace(/^\[(Pix|Débito|Debito|Crédito|Credito|Dinheiro)\]\s*/i, '') || item.description}</span>
+                          {item.payment_method && (
+                            <span
+                              style={{
+                                fontSize: '0.66rem',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                background:
+                                  item.payment_method.toLowerCase() === 'pix'
+                                    ? 'rgba(16, 185, 129, 0.2)'
+                                    : item.payment_method.toLowerCase() === 'crédito' || item.payment_method.toLowerCase() === 'credito'
+                                    ? 'rgba(244, 63, 94, 0.2)'
+                                    : item.payment_method.toLowerCase() === 'débito' || item.payment_method.toLowerCase() === 'debito'
+                                    ? 'rgba(59, 130, 246, 0.2)'
+                                    : 'rgba(245, 158, 11, 0.2)',
+                                color:
+                                  item.payment_method.toLowerCase() === 'pix'
+                                    ? '#34d399'
+                                    : item.payment_method.toLowerCase() === 'crédito' || item.payment_method.toLowerCase() === 'credito'
+                                    ? '#fb7185'
+                                    : item.payment_method.toLowerCase() === 'débito' || item.payment_method.toLowerCase() === 'debito'
+                                    ? '#60a5fa'
+                                    : '#fbbf24',
+                                border:
+                                  item.payment_method.toLowerCase() === 'pix'
+                                    ? '1px solid rgba(16, 185, 129, 0.35)'
+                                    : item.payment_method.toLowerCase() === 'crédito' || item.payment_method.toLowerCase() === 'credito'
+                                    ? '1px solid rgba(244, 63, 94, 0.35)'
+                                    : item.payment_method.toLowerCase() === 'débito' || item.payment_method.toLowerCase() === 'debito'
+                                    ? '1px solid rgba(59, 130, 246, 0.35)'
+                                    : '1px solid rgba(245, 158, 11, 0.35)',
+                              }}
+                            >
+                              {item.payment_method.toLowerCase() === 'pix' && '⚡ Pix'}
+                              {(item.payment_method.toLowerCase() === 'débito' || item.payment_method.toLowerCase() === 'debito') && '💳 Débito'}
+                              {(item.payment_method.toLowerCase() === 'crédito' || item.payment_method.toLowerCase() === 'credito') && '💳 Crédito'}
+                              {item.payment_method.toLowerCase() === 'dinheiro' && '💵 Dinheiro'}
+                              {!['pix', 'débito', 'debito', 'crédito', 'credito', 'dinheiro'].includes(item.payment_method.toLowerCase()) && item.payment_method}
+                            </span>
+                          )}
                           {isInvestment && (
                             <span
                               style={{

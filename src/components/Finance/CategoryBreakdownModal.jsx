@@ -352,32 +352,64 @@ export const CategoryBreakdownModal = ({
                       <div style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         Lançamentos detalhados:
                       </div>
-                      {items.map((it) => (
-                        <div
-                          key={it.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '8px 12px',
-                            background: 'rgba(0, 0, 0, 0.25)',
-                            borderRadius: '8px',
-                            fontSize: '0.84rem',
-                          }}
-                        >
-                          <div>
-                            <span style={{ color: '#e2e8f0', fontWeight: 600 }}>
-                              {it.description || 'Sem descrição'}
-                            </span>
-                            <span style={{ color: 'var(--text-dim)', fontSize: '0.76rem', marginLeft: '8px' }}>
-                              {formatDate(it.date)}
+                      {items.map((it) => {
+                        const cleanDesc = it.clean_description || (it.description || '').replace(/^\[(Pix|Débito|Debito|Crédito|Credito|Dinheiro)\]\s*/i, '') || it.description || 'Sem descrição';
+                        const pm = it.payment_method;
+                        return (
+                          <div
+                            key={it.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '8px 12px',
+                              background: 'rgba(0, 0, 0, 0.25)',
+                              borderRadius: '8px',
+                              fontSize: '0.84rem',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <span style={{ color: '#e2e8f0', fontWeight: 600 }}>
+                                {cleanDesc}
+                              </span>
+                              {pm && (
+                                <span
+                                  style={{
+                                    fontSize: '0.66rem',
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    fontWeight: 700,
+                                    background:
+                                      pm.toLowerCase() === 'pix'
+                                        ? 'rgba(16, 185, 129, 0.2)'
+                                        : pm.toLowerCase().includes('crédito') || pm.toLowerCase().includes('credito')
+                                        ? 'rgba(244, 63, 94, 0.2)'
+                                        : pm.toLowerCase().includes('débito') || pm.toLowerCase().includes('debito')
+                                        ? 'rgba(59, 130, 246, 0.2)'
+                                        : 'rgba(245, 158, 11, 0.2)',
+                                    color:
+                                      pm.toLowerCase() === 'pix'
+                                        ? '#34d399'
+                                        : pm.toLowerCase().includes('crédito') || pm.toLowerCase().includes('credito')
+                                        ? '#fb7185'
+                                        : pm.toLowerCase().includes('débito') || pm.toLowerCase().includes('debito')
+                                        ? '#60a5fa'
+                                        : '#fbbf24',
+                                  }}
+                                >
+                                  {pm.toLowerCase() === 'pix' ? '⚡ Pix' : pm}
+                                </span>
+                              )}
+                              <span style={{ color: 'var(--text-dim)', fontSize: '0.76rem' }}>
+                                {formatDate(it.date)}
+                              </span>
+                            </div>
+                            <span style={{ color: '#f43f5e', fontWeight: 700 }}>
+                              - {formatCurrency(it.amount)}
                             </span>
                           </div>
-                          <span style={{ color: '#f43f5e', fontWeight: 700 }}>
-                            - {formatCurrency(it.amount)}
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

@@ -3,6 +3,43 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { generateId } from '../utils/formatters';
 
+// Helpers para extração, normalização e exibição limpa da Forma de Pagamento
+export const extractPaymentMethod = (rec) => {
+  if (!rec) return null;
+  if (rec.payment_method) {
+    const p = String(rec.payment_method).toLowerCase().trim();
+    if (p === 'pix') return 'Pix';
+    if (p === 'debito' || p === 'débito') return 'Débito';
+    if (p === 'credito' || p === 'crédito') return 'Crédito';
+    if (p === 'dinheiro') return 'Dinheiro';
+    return rec.payment_method;
+  }
+  const desc = rec.description || '';
+  const match = desc.match(/^\[(Pix|Débito|Debito|Crédito|Credito|Dinheiro)\]\s*/i);
+  if (match) {
+    const raw = match[1].toLowerCase();
+    if (raw === 'pix') return 'Pix';
+    if (raw === 'debito' || raw === 'débito') return 'Débito';
+    if (raw === 'credito' || raw === 'crédito') return 'Crédito';
+    if (raw === 'dinheiro') return 'Dinheiro';
+  }
+  return null;
+};
+
+export const cleanDescription = (desc = '') => {
+  return String(desc).replace(/^\[(Pix|Débito|Debito|Crédito|Credito|Dinheiro)\]\s*/i, '').trim();
+};
+
+export const normalizeRecord = (r) => {
+  if (!r) return r;
+  const method = extractPaymentMethod(r);
+  return {
+    ...r,
+    payment_method: method,
+    clean_description: cleanDescription(r.description),
+  };
+};
+
 const FinanceContext = createContext();
 
 export const FinanceProvider = ({ children }) => {
@@ -52,7 +89,7 @@ export const FinanceProvider = ({ children }) => {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
           // Filtro rigoroso: garante que nenhum registro com user_id diferente entre na memória
-          localRecords = parsed.filter((r) => r.user_id === user.id);
+          localRecords = parsed.filter((r) => r.user_id === user.id).map(normalizeRecord);
           if (!isSilent && localRecords.length > 0) {
             setRecords(localRecords);
           }
@@ -104,7 +141,7 @@ export const FinanceProvider = ({ children }) => {
         }
 
         // Os dados oficiais do Supabase filtrados pelo ID do usuário são a verdade absoluta
-        const userStrictRecords = (data || []).filter((r) => r.user_id === user.id);
+        const userStrictRecords = (data || []).filter((r) => r.user_id === user.id).map(normalizeRecord);
         setRecords(userStrictRecords);
         localStorage.setItem(currentKey, JSON.stringify(userStrictRecords));
         setSyncStatus('synced');
@@ -183,6 +220,13 @@ export const FinanceProvider = ({ children }) => {
     }
 
     const currentKey = `finanzen_records_user_${user.id}`;
+    const cleanDesc = cleanDescription(recordData.description || '');
+    const paymentMethod = recordData.payment_method || null;
+    const paymentMethodTag = (recordData.type === 'despesa_casa' || recordData.type === 'negocio') && paymentMethod
+      ? `[${paymentMethod}] `
+      : '';
+    const finalDescription = `${paymentMethodTag}${cleanDesc}`.trim();
+
     const newRecord = {
       id: generateId('rec'),
       user_id: user.id, // Vínculo estrito com o usuário logado
@@ -190,7 +234,9 @@ export const FinanceProvider = ({ children }) => {
       amount: Number(recordData.amount) || 0,
       type: recordData.type,
       category: recordData.category,
-      description: recordData.description || '',
+      payment_method: paymentMethod,
+      description: finalDescription,
+      clean_description: cleanDesc,
       created_at: new Date().toISOString(),
     };
 
@@ -211,7 +257,7 @@ export const FinanceProvider = ({ children }) => {
     // Persistência segura no banco de dados Supabase com user_id do usuário
     setSyncStatus('syncing');
     try {
-      const { error } = await supabase.from('finance_records').insert({
+      const insertPayload = {
         id: newRecord.id,
         user_id: user.id, // Estritamente do usuário
         date: newRecord.date,
@@ -219,7 +265,9 @@ export const FinanceProvider = ({ children }) => {
         category: newRecord.category,
         description: newRecord.description,
         amount: newRecord.amount,
-      });
+      };
+
+      const { error } = await supabase.from('finance_records').insert(insertPayload);
 
       if (error) {
         console.warn('Lançamento salvo localmente (banco reportou):', error.message);
@@ -257,17 +305,28 @@ export const FinanceProvider = ({ children }) => {
       return { success: true, data: [] };
     }
 
-    const newRecords = recordsArray.map((recordData) => ({
-      id: generateId('rec'),
-      user_id: user.id, // Vínculo estrito
-      date: recordData.date || new Date().toISOString().split('T')[0],
-      amount: Number(recordData.amount) || 0,
-      type: recordData.type,
-      category: recordData.category,
-      description: recordData.description || '',
-      is_recurring: Boolean(recordData.is_recurring),
-      created_at: new Date().toISOString(),
-    }));
+    const newRecords = recordsArray.map((recordData) => {
+      const cleanDesc = cleanDescription(recordData.description || '');
+      const paymentMethod = recordData.payment_method || null;
+      const paymentMethodTag = (recordData.type === 'despesa_casa' || recordData.type === 'negocio') && paymentMethod
+        ? `[${paymentMethod}] `
+        : '';
+      const finalDescription = `${paymentMethodTag}${cleanDesc}`.trim();
+
+      return {
+        id: generateId('rec'),
+        user_id: user.id, // Vínculo estrito
+        date: recordData.date || new Date().toISOString().split('T')[0],
+        amount: Number(recordData.amount) || 0,
+        type: recordData.type,
+        category: recordData.category,
+        payment_method: paymentMethod,
+        description: finalDescription,
+        clean_description: cleanDesc,
+        is_recurring: Boolean(recordData.is_recurring),
+        created_at: new Date().toISOString(),
+      };
+    });
 
     // Atualização otimista na memória e no cache local
     setRecords((prev) => {

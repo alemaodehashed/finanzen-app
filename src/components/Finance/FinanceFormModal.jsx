@@ -62,6 +62,7 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     type: 'despesa_casa',
     category: 'Supermercado & Feira',
+    payment_method: 'Pix',
     description: '',
     amount: '',
     date: new Date().toISOString().split('T')[0],
@@ -78,6 +79,7 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
       ...prev,
       type,
       category: CATEGORIES[type]?.[0] || 'Geral',
+      payment_method: prev.payment_method || 'Pix',
     }));
   };
 
@@ -173,6 +175,7 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
     setFormData({
       type: 'despesa_casa',
       category: 'Supermercado & Feira',
+      payment_method: 'Pix',
       description: '',
       amount: '',
       date: new Date().toISOString().split('T')[0],
@@ -338,6 +341,23 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
               ))}
             </select>
           </div>
+
+          {/* Campo Forma de Pagamento (estilo idêntico à Categoria para Pix, Débito ou Crédito) */}
+          {(formData.type === 'despesa_casa' || formData.type === 'negocio') && (
+            <div className="form-group">
+              <label className="form-label">Forma de Pagamento</label>
+              <select
+                className="form-control"
+                value={formData.payment_method || 'Pix'}
+                onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
+              >
+                <option value="Pix">⚡ Pix</option>
+                <option value="Débito">💳 Débito (Cartão de Débito)</option>
+                <option value="Crédito">💳 Crédito (Cartão de Crédito)</option>
+                <option value="Dinheiro">💵 Dinheiro</option>
+              </select>
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label">Descrição / Observação</label>

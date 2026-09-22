@@ -6,7 +6,7 @@ export const exportToCSV = (records, filename = 'relatorio_financeiro.csv') => {
     return;
   }
 
-  const headers = ['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor (R$)'];
+  const headers = ['Data', 'Tipo', 'Categoria', 'Forma de Pagamento', 'Descrição', 'Valor (R$)'];
   const typeLabels = {
     renda: 'Renda Principal',
     despesa_casa: 'Despesas',
@@ -19,7 +19,8 @@ export const exportToCSV = (records, filename = 'relatorio_financeiro.csv') => {
     formatDate(r.date),
     typeLabels[r.type] || r.type,
     `"${(r.category || '').replace(/"/g, '""')}"`,
-    `"${(r.description || '').replace(/"/g, '""')}"`,
+    `"${(r.payment_method || '-').replace(/"/g, '""')}"`,
+    `"${(r.clean_description || (r.description || '').replace(/^\[(Pix|Débito|Debito|Crédito|Credito|Dinheiro)\]\s*/i, '') || '').replace(/"/g, '""')}"`,
     Number(r.amount || 0).toFixed(2).replace('.', ','),
   ]);
 
