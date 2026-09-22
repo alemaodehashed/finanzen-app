@@ -95,32 +95,6 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
     }
   };
 
-  // Autorizar / Liberar acesso do usuário
-  const handleApproveUser = async (userId, userName) => {
-    const res = await updateUserStatus(userId, 'active');
-    if (res.success) {
-      setActionSuccess(`Acesso AUTORIZADO com sucesso para ${userName}!`);
-      setProfiles((prev) =>
-        prev.map((p) => (p.id === userId ? { ...p, subscription_status: 'active' } : p))
-      );
-      setTimeout(() => setActionSuccess(''), 3000);
-    }
-  };
-
-  // Revogar / Suspender acesso do usuário
-  const handleRevokeUser = async (userId, userName) => {
-    if (confirm(`Deseja SUSPENDER a autorização de "${userName}"? Ele voltará para o status pendente.`)) {
-      const res = await updateUserStatus(userId, 'pending');
-      if (res.success) {
-        setActionSuccess(`Acesso de ${userName} suspenso (retornado para pendente).`);
-        setProfiles((prev) =>
-          prev.map((p) => (p.id === userId ? { ...p, subscription_status: 'pending' } : p))
-        );
-        setTimeout(() => setActionSuccess(''), 3000);
-      }
-    }
-  };
-
   // Alternar administrador
   const handleToggleAdmin = async (userId, userName, currentIsAdmin) => {
     const actionText = currentIsAdmin ? 'REMOVER status de administrador' : 'TORNAR ADMINISTRADOR';
@@ -143,9 +117,6 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
     p.cpf === '00000000000'
   );
 
-  const isProfilePending = (p) => !isProfileAdmin(p) && p.subscription_status === 'pending';
-  const isProfileActive = (p) => !isProfilePending(p);
-
   const filteredProfiles = profiles.filter((p) => {
     const matchSearch =
       (p.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -153,16 +124,14 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
       (p.phone || '').includes(searchTerm);
 
     if (!matchSearch) return false;
-    if (statusFilter === 'pending') return isProfilePending(p);
-    if (statusFilter === 'active') return isProfileActive(p);
+    if (statusFilter === 'active') return !isProfileAdmin(p);
     if (statusFilter === 'admin') return isProfileAdmin(p);
     return true;
   });
 
   const totalUsers = profiles.length;
-  const totalPending = profiles.filter(isProfilePending).length;
-  const totalActive = profiles.filter(isProfileActive).length;
   const totalAdmins = profiles.filter(isProfileAdmin).length;
+  const totalRegularUsers = profiles.filter((p) => !isProfileAdmin(p)).length;
 
   return (
     <div className="modal-overlay">
@@ -196,10 +165,10 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
             </div>
             <div>
               <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff' }}>
-                Painel do Dono • Autorização de Cadastros
+                Painel do Dono • Gestão de Usuários
               </h2>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>
-                Autorize e gerencie quem pode usar o FinanTEMP's
+                Monitore e gerencie as contas cadastradas no FinanTEMP's
               </p>
             </div>
           </div>
@@ -218,67 +187,55 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Métricas com destaque para pendentes */}
+        {/* Métricas dos Usuários */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
             gap: '12px',
             marginBottom: '20px',
           }}
         >
-          {/* Card Pendentes */}
-          <div
-            onClick={() => setStatusFilter('pending')}
-            className="glass-card"
-            style={{
-              padding: '14px',
-              borderLeft: '4px solid #f59e0b',
-              cursor: 'pointer',
-              background: totalPending > 0 ? 'rgba(245, 158, 11, 0.12)' : undefined,
-            }}
-          >
-            <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 800, letterSpacing: '0.5px' }}>
-              AGUARDANDO APROVAÇÃO
-            </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {totalPending}
-              {totalPending > 0 && (
-                <span style={{ fontSize: '0.68rem', background: '#f59e0b', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
-                  NOVO
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Card Ativos */}
+          {/* Card Usuários Cadastrados */}
           <div
             onClick={() => setStatusFilter('active')}
             className="glass-card"
-            style={{ padding: '14px', borderLeft: '4px solid #10b981', cursor: 'pointer' }}
+            style={{ padding: '16px', borderLeft: '4px solid #10b981', cursor: 'pointer' }}
           >
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>AUTORIZADOS / ATIVOS</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981' }}>{totalActive}</div>
+            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.5px' }}>
+              USUÁRIOS CADASTRADOS
+            </div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981', marginTop: '4px' }}>
+              {totalRegularUsers}
+            </div>
           </div>
 
-          {/* Card Admins */}
+          {/* Card Administradores */}
           <div
             onClick={() => setStatusFilter('admin')}
             className="glass-card"
-            style={{ padding: '14px', borderLeft: '4px solid #06b6d4', cursor: 'pointer' }}
+            style={{ padding: '16px', borderLeft: '4px solid #06b6d4', cursor: 'pointer' }}
           >
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>ADMINISTRADORES</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#06b6d4' }}>{totalAdmins}</div>
+            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.5px' }}>
+              ADMINISTRADORES
+            </div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#06b6d4', marginTop: '4px' }}>
+              {totalAdmins}
+            </div>
           </div>
 
-          {/* Card Total */}
+          {/* Card Total de Contas */}
           <div
             onClick={() => setStatusFilter('todos')}
             className="glass-card"
-            style={{ padding: '14px', borderLeft: '4px solid #8b5cf6', cursor: 'pointer' }}
+            style={{ padding: '16px', borderLeft: '4px solid #8b5cf6', cursor: 'pointer' }}
           >
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>TOTAL DE CONTAS</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff' }}>{totalUsers}</div>
+            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.5px' }}>
+              TOTAL DE CONTAS
+            </div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', marginTop: '4px' }}>
+              {totalUsers}
+            </div>
           </div>
         </div>
 
@@ -326,8 +283,7 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
             onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="todos">Todos os Usuários ({totalUsers})</option>
-            <option value="pending">⏳ Aguardando Aprovação ({totalPending})</option>
-            <option value="active">✓ Autorizados / Ativos ({totalActive})</option>
+            <option value="active">👤 Usuários ({totalRegularUsers})</option>
             <option value="admin">★ Administradores ({totalAdmins})</option>
           </select>
 
@@ -354,13 +310,9 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                   client.email === 'lucasadamdeveloper@gmail.com' ||
                   client.cpf === '00000000000';
                 const isClientAdmin = Boolean(client.is_admin || isMasterAdmin);
-                const isPending = !isClientAdmin && (client.subscription_status === 'pending' || !client.subscription_status);
-                const isUserActive = isClientAdmin || client.subscription_status === 'active';
 
                 const cleanPhone = (client.phone || '').replace(/\D/g, '');
-                const whatsappText = isPending
-                  ? `Olá ${client.full_name || 'Amigo'}! Vi que você se cadastrou no FinanTEMP's. Já liberei seu acesso!`
-                  : `Olá ${client.full_name || 'Amigo'}! Tudo bem? Sou o administrador do FinanTEMP's.`;
+                const whatsappText = `Olá ${client.full_name || 'Amigo'}! Tudo bem? Sou o administrador do FinanTEMP's.`;
 
                 const whatsappUrl = cleanPhone
                   ? `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(whatsappText)}`
@@ -370,8 +322,8 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                   <div
                     key={client.id}
                     style={{
-                      background: isPending ? 'rgba(245, 158, 11, 0.06)' : 'rgba(255, 255, 255, 0.03)',
-                      border: isPending ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid var(--border-color)',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid var(--border-color)',
                       borderRadius: 'var(--radius-md)',
                       padding: '12px 16px',
                       display: 'flex',
@@ -404,28 +356,9 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                           </span>
                         )}
 
-                        {isPending ? (
-                          <span
-                            style={{
-                              fontSize: '0.72rem',
-                              background: 'rgba(245, 158, 11, 0.2)',
-                              color: '#f59e0b',
-                              border: '1px solid rgba(245, 158, 11, 0.4)',
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontWeight: 800,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                            }}
-                          >
-                            <Clock size={11} /> AGUARDANDO LIBERAÇÃO
-                          </span>
-                        ) : (
-                          <span className="badge badge-income" style={{ fontSize: '0.72rem' }}>
-                            ✓ AUTORIZADO
-                          </span>
-                        )}
+                        <span className="badge badge-income" style={{ fontSize: '0.72rem' }}>
+                          ✓ AUTORIZADO
+                        </span>
                       </div>
 
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -476,42 +409,6 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                         >
                           <MessageCircle size={14} />
                         </a>
-                      )}
-
-                      {/* Botão de Autorizar Acesso (Se pendente) */}
-                      {isPending && (
-                        <button
-                          type="button"
-                          onClick={() => handleApproveUser(client.id, client.full_name || client.email)}
-                          className="btn btn-sm"
-                          style={{
-                            background: 'linear-gradient(135deg, #10b981, #059669)',
-                            color: '#fff',
-                            fontWeight: 800,
-                            padding: '6px 14px',
-                            boxShadow: '0 2px 10px rgba(16, 185, 129, 0.4)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                          }}
-                        >
-                          <Check size={14} />
-                          <span>Autorizar Acesso</span>
-                        </button>
-                      )}
-
-                      {/* Botão de Suspender / Revogar Acesso (Se ativo e não for admin) */}
-                      {isUserActive && !isClientAdmin && (
-                        <button
-                          type="button"
-                          onClick={() => handleRevokeUser(client.id, client.full_name || client.email)}
-                          className="btn btn-secondary btn-sm"
-                          style={{ color: '#f43f5e', borderColor: 'rgba(244, 63, 94, 0.3)' }}
-                          title="Suspender autorização do usuário"
-                        >
-                          <Ban size={13} />
-                          <span className="hide-mobile">Suspender</span>
-                        </button>
                       )}
 
                       {/* Alternar Admin (Proibido para conta mestre do dono) */}

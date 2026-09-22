@@ -254,17 +254,13 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* Card de Acesso do Usuário */}
+        {/* Card de Status da Conta */}
         <div
           style={{
             padding: '12px 14px',
             borderRadius: 'var(--radius-md)',
-            background: isUserApproved
-              ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.08))'
-              : 'rgba(245, 158, 11, 0.1)',
-            border: isUserApproved
-              ? '1px solid rgba(16, 185, 129, 0.25)'
-              : '1px solid rgba(245, 158, 11, 0.3)',
+            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.08))',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
             marginBottom: '18px',
             display: 'flex',
             alignItems: 'center',
@@ -273,28 +269,26 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
         >
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <CheckCircle2 size={15} color={isUserApproved ? '#10b981' : '#f59e0b'} />
+              <CheckCircle2 size={15} color="#10b981" />
               <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#fff' }}>
-                {isUserApproved ? 'Acesso Autorizado' : 'Aguardando Aprovação'}
+                Conta Ativa & Autorizada
               </span>
             </div>
             <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-              {isUserApproved
-                ? 'Sua conta e finanças são salvas e sincronizadas em nuvem'
-                : 'Aguardando liberação do administrador'}
+              Sua conta e finanças são salvas e sincronizadas em nuvem com segurança
             </div>
           </div>
           <span
             className="badge badge-pro"
             style={{
-              background: isUserApproved ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-              color: isUserApproved ? '#10b981' : '#f59e0b',
-              border: isUserApproved ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(245, 158, 11, 0.4)',
+              background: 'rgba(16, 185, 129, 0.2)',
+              color: '#10b981',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
               fontSize: '0.7rem',
               padding: '3px 8px',
             }}
           >
-            {isUserApproved ? 'LIBERADO' : 'PENDENTE'}
+            LIBERADO
           </span>
         </div>
 
