@@ -73,7 +73,7 @@ export const FinanceProvider = ({ children }) => {
   const storageKey = getStorageKey(user);
 
   // Carregar lançamentos do usuário com sincronização bidirecional em nuvem
-  const loadRecords = useCallback(async () => {
+  const loadRecords = useCallback(async (isSilent = false) => {
     if (!user) {
       // Carrega registros de convidado se existirem
       try {
@@ -86,12 +86,12 @@ export const FinanceProvider = ({ children }) => {
       } catch (e) {
         setRecords([]);
       }
-      setLoading(false);
+      if (!isSilent) setLoading(false);
       setSyncStatus('local');
       return;
     }
 
-    setLoading(true);
+    if (!isSilent) setLoading(true);
 
     // 1. Carrega imediatamente do cache local para renderização instantânea
     let localRecords = [];
@@ -108,6 +108,10 @@ export const FinanceProvider = ({ children }) => {
       }
       if (!saved && user.email) {
         saved = localStorage.getItem(`finanzen_records_${user.email.toLowerCase()}`);
+      }
+      // Migração de chaves legadas do admin
+      if (!saved && (cleanUserCpf === '11657245969' || user.email?.toLowerCase().includes('lucasadam'))) {
+        saved = localStorage.getItem('finanzen_records_00000000-0000-0000-0000-000000000001');
       }
 
       // Migração automática se havia registros cadastrados como visitante
@@ -140,7 +144,7 @@ export const FinanceProvider = ({ children }) => {
         });
       }
 
-      if (localRecords.length > 0) {
+      if (localRecords.length > 0 && !isSilent) {
         setRecords(localRecords);
         localStorage.setItem(storageKey, JSON.stringify(localRecords));
       }
@@ -151,13 +155,13 @@ export const FinanceProvider = ({ children }) => {
     // Se for modo demo ou não houver Supabase configurado
     if (isDemoMode || !supabase) {
       setSyncStatus('local');
-      setLoading(false);
+      if (!isSilent) setLoading(false);
       return;
     }
 
-    // 2. Busca lançamentos diretamente do banco de dados Supabase e sincroniza dados locais
+    // 2. Busca lançamentos diretamente do banco de dados Supabase e sincroniza dados
     try {
-      setSyncStatus('syncing');
+      if (!isSilent) setSyncStatus('syncing');
       const { data, error } = await supabase
         .from('finance_records')
         .select('*')
@@ -165,17 +169,14 @@ export const FinanceProvider = ({ children }) => {
         .order('date', { ascending: false });
 
       if (error) {
-        console.warn('Supabase offline ou aguardando configuração de RLS:', error.message);
+        console.warn('Aviso ao consultar Supabase:', error.message);
         setSyncStatus('local');
-      } else if (data && data.length > 0) {
-        // Banco possui dados atualizados: mescla com dados locais não sincronizados
-        const remoteIds = new Set(data.map((r) => r.id));
-        const unmergedLocal = localRecords.filter((lr) => !remoteIds.has(lr.id));
-
-        // Se existirem dados no computador que ainda não foram para a nuvem, sobe agora!
-        if (unmergedLocal.length > 0) {
+      } else if (data) {
+        // Envia apenas lançamentos locais criados offline explicitamente marcados
+        const pendingUploads = localRecords.filter((r) => r._pendingUpload === true);
+        if (pendingUploads.length > 0) {
           try {
-            const recordsToUpload = unmergedLocal.map((r) => ({
+            const recordsToUpload = pendingUploads.map((r) => ({
               id: r.id || generateId('rec'),
               user_id: user.id,
               date: r.date || new Date().toISOString().split('T')[0],
@@ -190,39 +191,8 @@ export const FinanceProvider = ({ children }) => {
           }
         }
 
-        const mergedRecords = [...data, ...unmergedLocal];
-        setRecords(mergedRecords);
-        localStorage.setItem(storageKey, JSON.stringify(mergedRecords));
-        setSyncStatus('synced');
-        setLastSyncTime(new Date());
-      } else if (localRecords.length > 0) {
-        // Banco remoto retornou vazio, mas temos dados locais:
-        // Sobe IMEDIATAMENTE os dados do computador para o banco de dados na nuvem!
-        const recordsToUpload = localRecords.map((r) => ({
-          id: r.id || generateId('rec'),
-          user_id: user.id,
-          date: r.date || new Date().toISOString().split('T')[0],
-          type: r.type,
-          category: r.category,
-          description: r.description || '',
-          amount: Number(r.amount) || 0,
-        }));
-
-        const { error: upsertErr } = await supabase.from('finance_records').upsert(recordsToUpload);
-        if (!upsertErr) {
-          setRecords(recordsToUpload);
-          localStorage.setItem(storageKey, JSON.stringify(recordsToUpload));
-          setSyncStatus('synced');
-          setLastSyncTime(new Date());
-        } else {
-          console.warn('Aviso ao sincronizar registros com o banco:', upsertErr.message);
-          setRecords(localRecords);
-          localStorage.setItem(storageKey, JSON.stringify(localRecords));
-          setSyncStatus('local');
-        }
-      } else {
-        // Nenhum dado nem local nem remoto
-        setRecords([]);
+        setRecords(data);
+        localStorage.setItem(storageKey, JSON.stringify(data));
         setSyncStatus('synced');
         setLastSyncTime(new Date());
       }
@@ -230,13 +200,63 @@ export const FinanceProvider = ({ children }) => {
       console.warn('Falha de conexão com o banco de dados:', err);
       setSyncStatus('local');
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   }, [user, isDemoMode, storageKey]);
 
   useEffect(() => {
     loadRecords();
   }, [loadRecords]);
+
+  // Sincronização em tempo real (Supabase Realtime WebSocket + reativação no iPhone PWA)
+  useEffect(() => {
+    if (!supabase || !user?.id || isDemoMode) return;
+
+    // 1. Canal Realtime no Supabase para sincronização instantânea (< 300ms) entre iPhone e PC
+    const channel = supabase
+      .channel(`realtime_finance_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'finance_records',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          loadRecords(true);
+        }
+      )
+      .subscribe();
+
+    // 2. Eventos de retorno ao App (iPhone tela inicial / Safari PWA / alternância de abas no PC)
+    const handleReactivate = () => {
+      if (document.visibilityState === 'visible') {
+        loadRecords(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleReactivate);
+    window.addEventListener('focus', handleReactivate);
+    window.addEventListener('pageshow', handleReactivate);
+    window.addEventListener('online', handleReactivate);
+
+    // 3. Heartbeat a cada 8 segundos quando o app estiver visível na tela
+    const heartbeat = setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine !== false) {
+        loadRecords(true);
+      }
+    }, 8000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', handleReactivate);
+      window.removeEventListener('focus', handleReactivate);
+      window.removeEventListener('pageshow', handleReactivate);
+      window.removeEventListener('online', handleReactivate);
+      clearInterval(heartbeat);
+    };
+  }, [user?.id, isDemoMode, loadRecords]);
 
   // Adicionar lançamento
   const addRecord = async (recordData) => {
