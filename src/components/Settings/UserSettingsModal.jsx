@@ -46,7 +46,8 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
     if (profile && isOpen) {
       setFullName(profile.full_name || '');
       setPhone(profile.phone || '');
-      setSavingsGoal(profile.savings_goal !== undefined && profile.savings_goal !== null ? String(profile.savings_goal) : '');
+      const initialGoal = profile.savings_goal ?? profile.settings?.freedom_goal;
+      setSavingsGoal(initialGoal !== undefined && initialGoal !== null && Number(initialGoal) > 0 ? String(initialGoal) : '');
       setMonthlySalary(profile.settings?.monthly_salary !== undefined && profile.settings?.monthly_salary !== null ? String(profile.settings.monthly_salary) : '');
       setMonthlyInvestmentGoal(profile.settings?.monthly_investment_goal !== undefined && profile.settings?.monthly_investment_goal !== null ? String(profile.settings.monthly_investment_goal) : '');
       setNewPassword('');
@@ -65,14 +66,20 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
 
   // Função central de salvamento imediato no Supabase e LocalStorage
   const saveUserData = useCallback(async (overrides = {}) => {
+    const rawGoal = overrides.savingsGoal !== undefined ? overrides.savingsGoal : savingsGoal;
+    const goalVal = Number(rawGoal) || 0;
+    const salaryVal = Number(overrides.monthlySalary !== undefined ? overrides.monthlySalary : monthlySalary) || 0;
+    const investVal = Number(overrides.monthlyInvestmentGoal !== undefined ? overrides.monthlyInvestmentGoal : monthlyInvestmentGoal) || 0;
+
     const dataToSave = {
       full_name: overrides.fullName !== undefined ? overrides.fullName : fullName,
       phone: overrides.phone !== undefined ? overrides.phone : phone,
-      savings_goal: Number(overrides.savingsGoal !== undefined ? overrides.savingsGoal : savingsGoal) || 0,
+      savings_goal: goalVal,
       settings: {
         ...(profile?.settings || {}),
-        monthly_salary: Number(overrides.monthlySalary !== undefined ? overrides.monthlySalary : monthlySalary) || 0,
-        monthly_investment_goal: Number(overrides.monthlyInvestmentGoal !== undefined ? overrides.monthlyInvestmentGoal : monthlyInvestmentGoal) || 0,
+        freedom_goal: goalVal,
+        monthly_salary: salaryVal,
+        monthly_investment_goal: investVal,
       },
     };
 
@@ -355,7 +362,7 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
 
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label" style={{ fontSize: '0.82rem' }}>
-              Meta Mensal de Economia (R$)
+              Meta de Liberdade Financeira / Economia (R$)
             </label>
             <div style={{ position: 'relative' }}>
               <Target
@@ -364,11 +371,11 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
               />
               <input
                 type="number"
-                step="50"
+                step="100"
                 min="0"
                 className="form-control"
                 style={{ paddingLeft: '38px' }}
-                placeholder="Ex: 500,00"
+                placeholder="Ex: 1000000"
                 value={savingsGoal}
                 onChange={(e) => {
                   setSavingsGoal(e.target.value);
@@ -378,7 +385,7 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
               />
             </div>
             <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-              Atualiza instantaneamente a barra de meta no painel do aplicativo.
+              Sincroniza instantaneamente com a Meta da Previsão Futura e com o painel do aplicativo.
             </div>
           </div>
 

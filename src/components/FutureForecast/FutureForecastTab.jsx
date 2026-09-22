@@ -23,9 +23,10 @@ import {
 export const FutureForecastTab = ({ onOpenSettings }) => {
   const { profile, updateProfile } = useAuth();
 
-  // Salário Mensal e Meta de Investimento
+  // Salário Mensal, Meta de Investimento e Meta da Liberdade
   const [salaryInput, setSalaryInput] = useState('');
   const [investmentGoalInput, setInvestmentGoalInput] = useState('');
+  const [freedomGoalInput, setFreedomGoalInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isIdealExpanded, setIsIdealExpanded] = useState(true);
@@ -41,17 +42,30 @@ export const FutureForecastTab = ({ onOpenSettings }) => {
         profile.settings?.monthly_investment_goal ??
         profile.monthly_investment_goal ??
         '';
+      const savedFreedom =
+        profile.savings_goal ??
+        profile.settings?.freedom_goal ??
+        '';
 
       setSalaryInput(savedSalary !== '' ? String(savedSalary) : '');
       setInvestmentGoalInput(savedGoal !== '' ? String(savedGoal) : '');
+      if (savedFreedom !== '' && Number(savedFreedom) > 0) {
+        setFreedomGoalInput(String(savedFreedom));
+      }
     }
   }, [profile]);
 
   const numericSalary = Number(salaryInput) || 0;
   const numericGoal = Number(investmentGoalInput) || 0;
+  const numericCustomFreedom = Number(freedomGoalInput) || 0;
 
-  // 1. Meta da Liberdade Financeira = Salário * 100
-  const freedomGoalAmount = numericSalary * 100;
+  // 1. Meta da Liberdade Financeira:
+  // Se o usuário configurou uma meta específica nas configurações (profile.savings_goal), ela tem prioridade total!
+  // Caso contrário, calcula pela regra padrão (Salário × 100).
+  const defaultCalculatedGoal = numericSalary * 100;
+  const freedomGoalAmount = numericCustomFreedom > 0
+    ? numericCustomFreedom
+    : (Number(profile?.savings_goal) > 0 ? Number(profile.savings_goal) : defaultCalculatedGoal);
 
   // 2. Aporte Mensal Recomendado = Salário * 0.20 (20%)
   const recommendedMonthlyContribution = numericSalary * 0.2;
@@ -66,16 +80,17 @@ export const FutureForecastTab = ({ onOpenSettings }) => {
     setSaveSuccess(false);
 
     try {
+      const targetGoal = freedomGoalAmount > 0 ? freedomGoalAmount : defaultCalculatedGoal;
       const updatedSettings = {
         ...(profile?.settings || {}),
+        freedom_goal: targetGoal,
         monthly_salary: numericSalary,
         monthly_investment_goal: numericGoal,
       };
 
       const { error } = await updateProfile({
         settings: updatedSettings,
-        // Também salva no topo se existir
-        savings_goal: freedomGoalAmount > 0 ? freedomGoalAmount : (profile?.savings_goal || 0),
+        savings_goal: targetGoal,
       });
 
       if (!error) {
@@ -341,6 +356,81 @@ export const FutureForecastTab = ({ onOpenSettings }) => {
                 Quanto você se compromete a poupar e investir todo mês.
               </span>
             </div>
+
+            {/* Campo 3: Meta de Liberdade Financeira */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
+                <label
+                  style={{
+                    fontSize: '0.88rem',
+                    fontWeight: 600,
+                    color: 'var(--text-main)',
+                    margin: 0,
+                  }}
+                >
+                  🎯 Sua Meta da Liberdade Financeira (R$)
+                </label>
+                {numericSalary > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setFreedomGoalInput(String(defaultCalculatedGoal))}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--primary)',
+                      fontSize: '0.76rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      padding: 0,
+                    }}
+                    title="Calcular pela regra padrão Salário × 100"
+                  >
+                    Usar Salário × 100 ({formatCurrency(defaultCalculatedGoal)})
+                  </button>
+                )}
+              </div>
+              <div style={{ position: 'relative' }}>
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: '14px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--text-dim)',
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  R$
+                </span>
+                <input
+                  type="number"
+                  step="100"
+                  min="0"
+                  placeholder={defaultCalculatedGoal > 0 ? `Ex: ${defaultCalculatedGoal}` : 'Ex: 1000000'}
+                  value={freedomGoalInput}
+                  onChange={(e) => setFreedomGoalInput(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px 12px 42px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    color: '#fff',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    outline: 'none',
+                    transition: 'var(--transition)',
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
+                  onBlur={(e) => (e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)')}
+                />
+              </div>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px', display: 'block' }}>
+                Sincronizada automaticamente com as configurações da sua conta.
+              </span>
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
@@ -573,7 +663,7 @@ export const FutureForecastTab = ({ onOpenSettings }) => {
                     <Target size={18} />
                   </span>
                   <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--primary)' }}>
-                    Meta da Liberdade (Salário × 100)
+                    Meta da Liberdade {numericCustomFreedom > 0 || Number(profile?.savings_goal) > 0 ? '(Configurada)' : '(Salário × 100)'}
                   </span>
                 </div>
 
@@ -582,7 +672,9 @@ export const FutureForecastTab = ({ onOpenSettings }) => {
                 </div>
 
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.4', margin: 0 }}>
-                  Acumulando esse valor a <strong>1% ao mês</strong>, os juros pagam exatamente <strong>100% do seu salário ({formatCurrency(numericSalary)})</strong> todo mês, sem você trabalhar!
+                  {numericCustomFreedom > 0 || Number(profile?.savings_goal) > 0
+                    ? `Sua meta definida nas configurações é de ${formatCurrency(freedomGoalAmount)}. A 1% ao mês de juros, ela renderá ${formatCurrency(freedomGoalAmount * 0.01)} todo mês de renda passiva para você!`
+                    : `Acumulando esse valor a 1% ao mês, os juros pagam exatamente 100% do seu salário (${formatCurrency(numericSalary)}) todo mês, sem você trabalhar!`}
                 </p>
               </div>
 
