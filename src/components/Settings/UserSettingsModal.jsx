@@ -14,7 +14,9 @@ import {
   Cloud,
   RefreshCw,
   AlertCircle,
-  KeyRound
+  KeyRound,
+  DollarSign,
+  TrendingUp
 } from 'lucide-react';
 
 export const UserSettingsModal = ({ isOpen, onClose }) => {
@@ -23,6 +25,8 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [savingsGoal, setSavingsGoal] = useState('');
+  const [monthlySalary, setMonthlySalary] = useState('');
+  const [monthlyInvestmentGoal, setMonthlyInvestmentGoal] = useState('');
   
   // Troca de Senha
   const [newPassword, setNewPassword] = useState('');
@@ -43,6 +47,8 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
       setFullName(profile.full_name || '');
       setPhone(profile.phone || '');
       setSavingsGoal(profile.savings_goal !== undefined && profile.savings_goal !== null ? String(profile.savings_goal) : '');
+      setMonthlySalary(profile.settings?.monthly_salary !== undefined && profile.settings?.monthly_salary !== null ? String(profile.settings.monthly_salary) : '');
+      setMonthlyInvestmentGoal(profile.settings?.monthly_investment_goal !== undefined && profile.settings?.monthly_investment_goal !== null ? String(profile.settings.monthly_investment_goal) : '');
       setNewPassword('');
       setPasswordFeedback({ msg: '', type: '' });
       setAutoSaveStatus('saved');
@@ -63,6 +69,11 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
       full_name: overrides.fullName !== undefined ? overrides.fullName : fullName,
       phone: overrides.phone !== undefined ? overrides.phone : phone,
       savings_goal: Number(overrides.savingsGoal !== undefined ? overrides.savingsGoal : savingsGoal) || 0,
+      settings: {
+        ...(profile?.settings || {}),
+        monthly_salary: Number(overrides.monthlySalary !== undefined ? overrides.monthlySalary : monthlySalary) || 0,
+        monthly_investment_goal: Number(overrides.monthlyInvestmentGoal !== undefined ? overrides.monthlyInvestmentGoal : monthlyInvestmentGoal) || 0,
+      },
     };
 
     setAutoSaveStatus('saving');
@@ -79,7 +90,7 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
       console.warn('Erro no salvamento automático:', err);
       setAutoSaveStatus('error');
     }
-  }, [fullName, phone, savingsGoal, updateProfile]);
+  }, [fullName, phone, savingsGoal, monthlySalary, monthlyInvestmentGoal, profile?.settings, updateProfile]);
 
   // Agenda salvamento automático com debounce de 700ms ao digitar
   const triggerDebouncedAutoSave = useCallback((newValues = {}) => {
@@ -368,6 +379,66 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
             </div>
             <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '4px' }}>
               Atualiza instantaneamente a barra de meta no painel do aplicativo.
+            </div>
+          </div>
+
+          {/* Salário Mensal para Previsão Futura */}
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.82rem' }}>
+              Salário / Renda Mensal (R$)
+            </label>
+            <div style={{ position: 'relative' }}>
+              <DollarSign
+                size={17}
+                style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-dim)' }}
+              />
+              <input
+                type="number"
+                step="50"
+                min="0"
+                className="form-control"
+                style={{ paddingLeft: '38px' }}
+                placeholder="Ex: 4450,00"
+                value={monthlySalary}
+                onChange={(e) => {
+                  setMonthlySalary(e.target.value);
+                  triggerDebouncedAutoSave({ monthlySalary: e.target.value });
+                }}
+                onBlur={(e) => handleBlur('monthlySalary', e.target.value)}
+              />
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+              Usado para calcular sua Meta de Liberdade (Salário × 100) e Reserva de Emergência.
+            </div>
+          </div>
+
+          {/* Meta de Investimento Mensal (Aporte) */}
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.82rem' }}>
+              Meta de Investimento Mensal (Aporte R$)
+            </label>
+            <div style={{ position: 'relative' }}>
+              <TrendingUp
+                size={17}
+                style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-dim)' }}
+              />
+              <input
+                type="number"
+                step="50"
+                min="0"
+                className="form-control"
+                style={{ paddingLeft: '38px' }}
+                placeholder="Ex: 890,00"
+                value={monthlyInvestmentGoal}
+                onChange={(e) => {
+                  setMonthlyInvestmentGoal(e.target.value);
+                  triggerDebouncedAutoSave({ monthlyInvestmentGoal: e.target.value });
+                }}
+                onBlur={(e) => handleBlur('monthlyInvestmentGoal', e.target.value)}
+              />
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+              Base para a simulação de juros compostos a 1% a.m. na aba Previsão Futura.
             </div>
           </div>
 

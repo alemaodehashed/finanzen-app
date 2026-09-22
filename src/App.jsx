@@ -13,11 +13,14 @@ import { PaywallBanner } from './components/Subscription/PaywallBanner';
 import { PendingApprovalView } from './components/Auth/PendingApprovalView';
 import { InstallAppPopup } from './components/Layout/InstallAppPopup';
 import { exportToCSV, printReport } from './utils/exportData';
+import { FutureForecastTab } from './components/FutureForecast/FutureForecastTab';
+import { Wallet, TrendingUp } from 'lucide-react';
 
 const MainApp = () => {
   const { user, isApproved } = useAuth();
   const { records } = useFinance();
 
+  const [activeMainTab, setActiveMainTab] = useState('dashboard'); // 'dashboard' | 'forecast'
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authInitialMode, setAuthInitialMode] = useState('login');
@@ -66,6 +69,8 @@ const MainApp = () => {
         onOpenAbout={() => setIsAboutModalOpen(true)}
         onExportCSV={handleExportCSV}
         onPrint={printReport}
+        activeTab={activeMainTab}
+        onSelectTab={setActiveMainTab}
       />
 
       <main className="app-container" style={{ flex: 1 }}>
@@ -78,7 +83,81 @@ const MainApp = () => {
             onOpenAuth={handleOpenAuth}
           />
         ) : (
-          <FinanceDashboard onOpenNewModal={() => setIsFormModalOpen(true)} />
+          <div>
+            {/* Barra de Seleção de Abas do Aplicativo */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '20px',
+                paddingBottom: '12px',
+                borderBottom: '1px solid var(--border-color)',
+                flexWrap: 'wrap',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setActiveMainTab('dashboard')}
+                style={{
+                  background:
+                    activeMainTab === 'dashboard'
+                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                      : 'rgba(255, 255, 255, 0.05)',
+                  color: activeMainTab === 'dashboard' ? '#fff' : 'var(--text-muted)',
+                  border: activeMainTab === 'dashboard' ? '1px solid #10b981' : '1px solid var(--border-color)',
+                  padding: '9px 18px',
+                  borderRadius: 'var(--radius-md)',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  boxShadow:
+                    activeMainTab === 'dashboard' ? '0 4px 12px rgba(16, 185, 129, 0.35)' : 'none',
+                  transition: 'var(--transition)',
+                }}
+              >
+                <Wallet size={16} />
+                <span>Visão Geral & Lançamentos</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveMainTab('forecast')}
+                style={{
+                  background:
+                    activeMainTab === 'forecast'
+                      ? 'linear-gradient(135deg, #06b6d4 0%, #0284c7 100%)'
+                      : 'rgba(255, 255, 255, 0.05)',
+                  color: activeMainTab === 'forecast' ? '#fff' : 'var(--text-muted)',
+                  border: activeMainTab === 'forecast' ? '1px solid #06b6d4' : '1px solid var(--border-color)',
+                  padding: '9px 18px',
+                  borderRadius: 'var(--radius-md)',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  boxShadow:
+                    activeMainTab === 'forecast' ? '0 4px 12px rgba(6, 182, 212, 0.35)' : 'none',
+                  transition: 'var(--transition)',
+                }}
+              >
+                <TrendingUp size={16} />
+                <span>Previsão Futura & Liberdade</span>
+              </button>
+            </div>
+
+            {/* Conteúdo da Aba Ativa */}
+            {activeMainTab === 'dashboard' ? (
+              <FinanceDashboard onOpenNewModal={() => setIsFormModalOpen(true)} />
+            ) : (
+              <FutureForecastTab onOpenSettings={() => setIsSettingsModalOpen(true)} />
+            )}
+          </div>
         )}
 
         {/* Modal de Lançamento Financeiro */}

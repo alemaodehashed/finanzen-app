@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Sparkles, Download, LogOut, Smartphone, CheckCircle, Crown, Settings, Shield } from 'lucide-react';
+import { Sparkles, Download, LogOut, Smartphone, CheckCircle, Crown, Settings, Shield, Wallet, TrendingUp } from 'lucide-react';
 import { PWAInstallModal } from './PWAInstallModal';
 
-export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbout, onExportCSV, onPrint }) => {
+export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbout, onExportCSV, onPrint, activeTab, onSelectTab }) => {
   const { user, profile, isAdmin, signOut } = useAuth();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -112,6 +112,64 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
 
         {/* Ações e Usuário */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {/* Alternador de Abas (Finanças / Previsão Futura) */}
+          {user && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: 'rgba(0, 0, 0, 0.35)',
+                padding: '3px',
+                borderRadius: '10px',
+                border: '1px solid var(--border-color)',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => onSelectTab && onSelectTab('dashboard')}
+                style={{
+                  background: activeTab === 'dashboard' ? 'var(--primary)' : 'transparent',
+                  color: activeTab === 'dashboard' ? '#000' : 'var(--text-muted)',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  border: 'none',
+                  borderRadius: '7px',
+                  padding: '5px 12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  transition: 'var(--transition)',
+                }}
+              >
+                <Wallet size={13} />
+                <span>Finanças</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onSelectTab && onSelectTab('forecast')}
+                style={{
+                  background: activeTab === 'forecast' ? 'var(--secondary)' : 'transparent',
+                  color: activeTab === 'forecast' ? '#000' : 'var(--text-muted)',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  border: 'none',
+                  borderRadius: '7px',
+                  padding: '5px 12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  transition: 'var(--transition)',
+                }}
+              >
+                <TrendingUp size={13} />
+                <span>Previsão Futura</span>
+              </button>
+            </div>
+          )}
+
           {/* Botão PWA Instalar no Celular */}
           {!isInstalled && (
             <button
