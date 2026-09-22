@@ -322,24 +322,47 @@ export const AuthProvider = ({ children }) => {
 
   const loginAsAdmin = async (adminEmail = 'adam.tv2004@gmail.com') => {
     const cleanEmail = (adminEmail || 'adam.tv2004@gmail.com').trim().toLowerCase();
+
+    // Busca se já existe um perfil real para este e-mail
+    let existingProfile = null;
+    if (supabase) {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .ilike('email', cleanEmail)
+          .neq('id', '00000000-0000-0000-0000-000000000001')
+          .maybeSingle();
+        if (data) existingProfile = data;
+      } catch (e) {}
+    }
+
+    if (!existingProfile) {
+      const list = getDemoUsers();
+      existingProfile = list.find(
+        (u) => (u.email || '').toLowerCase() === cleanEmail && u.id !== '00000000-0000-0000-0000-000000000001'
+      );
+    }
+
     const adminUser = {
-      id: '00000000-0000-0000-0000-000000000001',
-      cpf: '00000000000',
+      id: existingProfile?.id || (cleanEmail.includes('lucasadam') ? '00000000-0000-0000-0000-011657245969' : '00000000-0000-0000-0000-000000000001'),
+      cpf: existingProfile?.cpf || (cleanEmail.includes('lucasadam') ? '11657245969' : '00000000000'),
       email: cleanEmail,
-      user_metadata: { full_name: '3º Sgt Adam (Administrador)' },
+      user_metadata: { full_name: existingProfile?.full_name || 'Lucas Adam' },
     };
+
     const adminProfile = {
       id: adminUser.id,
-      cpf: '00000000000',
+      cpf: adminUser.cpf,
       email: cleanEmail,
-      full_name: '3º Sgt Adam (Administrador)',
-      phone: '(42) 99975-7796',
-      password_hash: 'admin123',
+      full_name: existingProfile?.full_name || 'Lucas Adam',
+      phone: existingProfile?.phone || '(42) 99975-7796',
+      password_hash: existingProfile?.password_hash || 'admin123',
       is_admin: true,
       subscription_status: 'active',
       followed_instagram: true,
       last_sign_in_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
+      created_at: existingProfile?.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
@@ -644,6 +667,8 @@ export const AuthProvider = ({ children }) => {
 
   const fetchAllProfiles = async () => {
     const localUsers = getDemoUsers();
+    let result = [];
+
     if (supabase) {
       try {
         const { data, error } = await supabase
@@ -680,19 +705,50 @@ export const AuthProvider = ({ children }) => {
               }
               return lu;
             });
-          return [...mapped, ...unmergedLocals];
+          result = [...mapped, ...unmergedLocals];
         }
       } catch (err) {
         console.warn('Erro ao buscar todos os perfis no Supabase:', err);
       }
     }
-    return localUsers.map((lu) => {
-      const isOwner =
-        lu.email === 'adam.tv2004@gmail.com' ||
-        lu.email === 'lucasadamdeveloper@gmail.com' ||
-        lu.cpf === '00000000000';
-      return isOwner ? { ...lu, is_admin: true, subscription_status: 'active' } : lu;
+
+    if (result.length === 0) {
+      result = localUsers.map((lu) => {
+        const isOwner =
+          lu.email === 'adam.tv2004@gmail.com' ||
+          lu.email === 'lucasadamdeveloper@gmail.com' ||
+          lu.cpf === '00000000000';
+        return isOwner ? { ...lu, is_admin: true, subscription_status: 'active' } : lu;
+      });
+    }
+
+    // 1. Remove qualquer conta de probe/teste
+    result = result.filter((p) => !p.email?.includes('probe_test_account'));
+
+    // 2. Se o dono tem conta real com CPF, oculta o placeholder genérico 00000000000
+    const hasRealCpfOwner = result.some(
+      (p) =>
+        (p.email === 'lucasadamdeveloper@gmail.com' || p.email === 'adam.tv2004@gmail.com') &&
+        p.cpf &&
+        p.cpf !== '00000000000'
+    );
+    if (hasRealCpfOwner) {
+      result = result.filter(
+        (p) => p.id !== '00000000-0000-0000-0000-000000000001' && p.cpf !== '00000000000'
+      );
+    }
+
+    // 3. Deduplicação limpa por e-mail para nunca duplicar nenhum usuário
+    const seenEmails = new Set();
+    result = result.filter((p) => {
+      const email = (p.email || '').toLowerCase().trim();
+      if (!email) return true;
+      if (seenEmails.has(email)) return false;
+      seenEmails.add(email);
+      return true;
     });
+
+    return result;
   };
 
   const updateUserStatus = async (targetUserId, newStatus, extraData = {}) => {

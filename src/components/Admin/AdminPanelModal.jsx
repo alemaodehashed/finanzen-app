@@ -143,24 +143,25 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
     p.cpf === '00000000000'
   );
 
+  const isProfilePending = (p) => !isProfileAdmin(p) && p.subscription_status === 'pending';
+  const isProfileActive = (p) => !isProfilePending(p);
+
   const filteredProfiles = profiles.filter((p) => {
     const matchSearch =
       (p.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.phone || '').includes(searchTerm);
 
-    if (statusFilter === 'todos') return matchSearch;
-    if (statusFilter === 'pending') return matchSearch && !isProfileAdmin(p) && (p.subscription_status === 'pending' || !p.subscription_status);
-    if (statusFilter === 'active') return matchSearch && (p.subscription_status === 'active' || isProfileAdmin(p));
-    if (statusFilter === 'admin') return matchSearch && isProfileAdmin(p);
-    return matchSearch;
+    if (!matchSearch) return false;
+    if (statusFilter === 'pending') return isProfilePending(p);
+    if (statusFilter === 'active') return isProfileActive(p);
+    if (statusFilter === 'admin') return isProfileAdmin(p);
+    return true;
   });
 
   const totalUsers = profiles.length;
-  const totalPending = profiles.filter(
-    (p) => !isProfileAdmin(p) && (p.subscription_status === 'pending' || !p.subscription_status)
-  ).length;
-  const totalActive = profiles.filter((p) => p.subscription_status === 'active' || isProfileAdmin(p)).length;
+  const totalPending = profiles.filter(isProfilePending).length;
+  const totalActive = profiles.filter(isProfileActive).length;
   const totalAdmins = profiles.filter(isProfileAdmin).length;
 
   return (
