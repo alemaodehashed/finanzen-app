@@ -20,7 +20,8 @@ import {
   Database,
   RefreshCw,
   Landmark,
-  PiggyBank
+  PiggyBank,
+  PieChart
 } from 'lucide-react';
 import { CategoryReport } from './CategoryReport';
 import { CategoryBreakdownModal } from './CategoryBreakdownModal';
