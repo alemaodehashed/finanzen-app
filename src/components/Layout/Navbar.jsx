@@ -89,13 +89,13 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
         >
           <img
             src="/logo.png"
-            alt="Divisa 3º Sgt Infantaria 13º BIB"
+            alt="FinanTEMP's"
             style={{
               width: '38px',
-              height: '42px',
+              height: '38px',
               objectFit: 'contain',
-              borderRadius: '6px',
-              filter: 'drop-shadow(0 2px 8px rgba(16, 185, 129, 0.35))',
+              borderRadius: '8px',
+              filter: 'drop-shadow(0 2px 8px rgba(16, 185, 129, 0.4))',
             }}
           />
           <div>

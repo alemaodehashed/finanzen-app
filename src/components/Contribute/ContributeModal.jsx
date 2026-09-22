@@ -104,15 +104,13 @@ export const ContributeModal = ({ isOpen, onClose }) => {
         <div style={{ position: 'relative', display: 'inline-block', marginBottom: '14px' }}>
           <img
             src="/logo.png"
-            alt="Divisa 3º Sgt Infantaria 13º BIB"
+            alt="FinanTEMP's"
             style={{
               width: '92px',
-              height: 'auto',
-              borderRadius: '12px',
-              boxShadow: '0 8px 24px rgba(16, 185, 129, 0.25)',
-              border: '2px solid rgba(16, 185, 129, 0.4)',
-              background: '#1a3323',
-              padding: '6px',
+              height: '92px',
+              objectFit: 'contain',
+              borderRadius: '16px',
+              filter: 'drop-shadow(0 8px 24px rgba(16, 185, 129, 0.4))',
             }}
           />
         </div>

@@ -1,5 +1,5 @@
 // Service Worker - FinanTEMP's PWA
-const CACHE_NAME = 'finantemps-cache-v3';
+const CACHE_NAME = 'finantemps-cache-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
