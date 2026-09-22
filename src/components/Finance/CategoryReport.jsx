@@ -8,9 +8,9 @@ export const CategoryReport = ({
   selectedCategory,
   onSelectCategory,
 }) => {
-  // Apenas despesas (casa + negócio)
+  // Despesas (casa + negócio) e Investimentos
   const expenseRecords = records.filter(
-    (r) => r.type === 'despesa_casa' || r.type === 'negocio'
+    (r) => r.type === 'despesa_casa' || r.type === 'negocio' || r.type === 'investimento'
   );
 
   const totalExpense = expenseRecords.reduce((sum, r) => sum + Number(r.amount || 0), 0);

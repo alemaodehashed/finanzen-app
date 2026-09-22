@@ -39,6 +39,7 @@ const getCategoryIcon = (category = '') => {
   if (cat.includes('vestuário')) return <Shirt size={18} color="#a855f7" />;
   if (cat.includes('streaming') || cat.includes('assinaturas')) return <Tv size={18} color="#6366f1" />;
   if (cat.includes('negócio') || cat.includes('mercadorias') || cat.includes('estoque')) return <Briefcase size={18} color="#f97316" />;
+  if (cat.includes('ações') || cat.includes('fii') || cat.includes('investimento') || cat.includes('cdb') || cat.includes('tesouro') || cat.includes('poupança') || cat.includes('cripto') || cat.includes('previdência')) return <TrendingUp size={18} color="#8b5cf6" />;
   return <Layers size={18} color="#94a3b8" />;
 };
 
@@ -71,9 +72,9 @@ export const CategoryBreakdownModal = ({
     return { year: null, month: null };
   };
 
-  // Filtra registros do período selecionado (apenas despesas)
+  // Filtra registros do período selecionado (despesas e investimentos)
   const filteredExpenses = records.filter((r) => {
-    if (r.type !== 'despesa_casa' && r.type !== 'negocio') return false;
+    if (r.type !== 'despesa_casa' && r.type !== 'negocio' && r.type !== 'investimento') return false;
     const { year: y, month: m } = parseDateParts(r.date);
     if (!y || !m) return true;
 

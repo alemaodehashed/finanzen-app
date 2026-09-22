@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useFinance } from '../../contexts/FinanceContext';
-import { X, Plus, Home, DollarSign, Sparkles, Briefcase, Repeat, Calendar, Check } from 'lucide-react';
+import { X, Plus, Home, DollarSign, Sparkles, Briefcase, Repeat, Calendar, Check, TrendingUp } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 const CATEGORIES = {
@@ -16,15 +16,23 @@ const CATEGORIES = {
     'Assinaturas & Streaming',
     'Outras Despesas de Casa',
   ],
+  investimento: [
+    'Ações & Fundos Imobiliários (FIIs)',
+    'Renda Fixa / CDB / Tesouro Direto',
+    'Criptomoedas / Bitcoin',
+    'Reserva de Emergência / Poupança',
+    'Previdência Privada',
+    'Outros Investimentos',
+  ],
   renda: [
     'Salário / Emprego Fixo',
     'Aposentadoria / Pensão',
     'Aluguel Recebido',
     'Pró-Labore Fixo',
-    'Investimentos / Dividendos',
     'Outra Renda Principal',
   ],
   renda_extra: [
+    'Investimentos & Dividendos (Lucro)',
     'Vendas & Comissões',
     'Bicos & Freelances',
     'Serviços Prestados',
@@ -196,7 +204,7 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
         </div>
 
         {/* Seletor de Tipo com visual em abas/botões */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '18px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', marginBottom: '18px' }}>
           <button
             type="button"
             className={`btn btn-sm ${formData.type === 'despesa_casa' ? 'btn-primary' : 'btn-secondary'}`}
@@ -208,6 +216,19 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
             onClick={() => handleTypeChange('despesa_casa')}
           >
             <Home size={14} /> Despesa de Casa
+          </button>
+
+          <button
+            type="button"
+            className={`btn btn-sm ${formData.type === 'investimento' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              background: formData.type === 'investimento' ? 'rgba(139, 92, 246, 0.25)' : undefined,
+              borderColor: formData.type === 'investimento' ? '#8b5cf6' : undefined,
+              color: formData.type === 'investimento' ? '#fff' : undefined,
+            }}
+            onClick={() => handleTypeChange('investimento')}
+          >
+            <TrendingUp size={14} color="#a78bfa" /> Investimento
           </button>
 
           <button

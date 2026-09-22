@@ -18,7 +18,9 @@ import {
   Filter,
   Target,
   Database,
-  RefreshCw
+  RefreshCw,
+  Landmark,
+  PiggyBank
 } from 'lucide-react';
 import { CategoryReport } from './CategoryReport';
 import { CategoryBreakdownModal } from './CategoryBreakdownModal';
@@ -105,9 +107,15 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
     .filter((r) => r.type === 'negocio')
     .reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
+  const totalInvestido = periodRecords
+    .filter((r) => r.type === 'investimento')
+    .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
   const totalEntradas = totalRendaPrincipal + totalRendaExtra;
-  const totalSaidas = totalDespesaCasa + totalNegocio;
+  const totalDespesas = totalDespesaCasa + totalNegocio;
+  const totalSaidas = totalDespesas + totalInvestido;
   const saldoFinal = totalEntradas - totalSaidas;
+  const taxaInvestimento = totalEntradas > 0 ? ((totalInvestido / totalEntradas) * 100) : 0;
   const taxaPoupanca = totalEntradas > 0 ? ((saldoFinal / totalEntradas) * 100) : 0;
 
   // Navegação de mês
@@ -355,7 +363,7 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-              DESPESAS (SAÍDAS)
+              DESPESAS (CONSUMO)
             </span>
             <div
               style={{
@@ -372,12 +380,53 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
             </div>
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f43f5e' }}>
-            {formatCurrency(totalSaidas)}
+            {formatCurrency(totalDespesas)}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px', flexWrap: 'wrap', gap: '4px' }}>
             <span>Casa: {formatCurrency(totalDespesaCasa)} | Negócio: {formatCurrency(totalNegocio)}</span>
             <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.75rem' }}>
               Ver por Categoria ➔
+            </span>
+          </div>
+        </div>
+
+        {/* Total Investido (Aportes de Patrimônio) */}
+        <div
+          className="glass-card"
+          onClick={() => setIsCategoryModalOpen(true)}
+          style={{
+            padding: '20px',
+            borderLeft: '4px solid #8b5cf6',
+            cursor: 'pointer',
+            transition: 'transform 0.15s ease, border-color 0.15s ease',
+          }}
+          title="Clique para ver os investimentos por categoria"
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+              VALOR INVESTIDO (APORTES)
+            </span>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: 'rgba(139, 92, 246, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Landmark size={16} color="#a78bfa" />
+            </div>
+          </div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#a78bfa' }}>
+            {formatCurrency(totalInvestido)}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px', flexWrap: 'wrap', gap: '4px' }}>
+            <span>{totalInvestido > 0 ? `${taxaInvestimento.toFixed(1)}% da renda aportada` : 'Patrimônio acumulado'}</span>
+            <span style={{ color: '#a78bfa', fontWeight: 700, fontSize: '0.75rem' }}>
+              Ver Aportes ➔
             </span>
           </div>
         </div>
@@ -421,13 +470,13 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
           <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>
             {saldoFinal >= 0
               ? `Economia de ${taxaPoupanca.toFixed(1)}% das receitas`
-              : 'Atenção: Gastos superaram as receitas no período'}
+              : 'Atenção: Gastos + Aportes superaram receitas'}
           </div>
         </div>
 
         {/* Meta Mensal de Economia (Se configurada) */}
         {profile?.savings_goal > 0 && (
-          <div className="glass-card" style={{ padding: '20px', borderLeft: '4px solid #8b5cf6' }}>
+          <div className="glass-card" style={{ padding: '20px', borderLeft: '4px solid #06b6d4' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                 META DE ECONOMIA
@@ -437,16 +486,16 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
                   width: '32px',
                   height: '32px',
                   borderRadius: '8px',
-                  background: 'rgba(139, 92, 246, 0.15)',
+                  background: 'rgba(6, 182, 212, 0.15)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Target size={16} color="#8b5cf6" />
+                <Target size={16} color="#06b6d4" />
               </div>
             </div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#a78bfa' }}>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#22d3ee' }}>
               {formatCurrency(profile.savings_goal)}
             </div>
             <div style={{ marginTop: '8px' }}>
@@ -508,9 +557,10 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
               >
                 <option value="todos">Todos os Tipos</option>
                 <option value="despesa_casa">Despesas de Casa</option>
-                <option value="renda">Salário Fixo</option>
-                <option value="renda_extra">Renda Extra</option>
                 <option value="negocio">Negócio Próprio</option>
+                <option value="investimento">Investimentos (Aportes)</option>
+                <option value="renda">Salário Fixo</option>
+                <option value="renda_extra">Renda Extra / Dividendos</option>
               </select>
 
               {availableCategories.length > 0 && (
@@ -564,6 +614,7 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '480px', overflowY: 'auto' }}>
               {displayRecords.map((item) => {
                 const isExpense = item.type === 'despesa_casa' || item.type === 'negocio';
+                const isInvestment = item.type === 'investimento';
                 return (
                   <div
                     key={item.id}
@@ -584,14 +635,20 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
                           width: '32px',
                           height: '32px',
                           borderRadius: '8px',
-                          background: isExpense ? 'var(--expense-bg)' : 'var(--income-bg)',
+                          background: isInvestment
+                            ? 'rgba(139, 92, 246, 0.18)'
+                            : isExpense
+                            ? 'var(--expense-bg)'
+                            : 'var(--income-bg)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           flexShrink: 0,
                         }}
                       >
-                        {isExpense ? (
+                        {isInvestment ? (
+                          <Landmark size={16} color="#a78bfa" />
+                        ) : isExpense ? (
                           <Home size={16} color="#f43f5e" />
                         ) : (
                           <DollarSign size={16} color="#10b981" />
@@ -600,6 +657,21 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
                       <div>
                         <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span>{item.description}</span>
+                          {isInvestment && (
+                            <span
+                              style={{
+                                fontSize: '0.66rem',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                background: 'rgba(139, 92, 246, 0.2)',
+                                color: '#c4b5fd',
+                                border: '1px solid rgba(139, 92, 246, 0.35)',
+                                fontWeight: 600,
+                              }}
+                            >
+                              Investimento
+                            </span>
+                          )}
                           {(item.is_recurring || /\(\d+\/\d+\)/.test(item.description)) && (
                             <span
                               style={{
@@ -627,10 +699,10 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
                         style={{
                           fontSize: '0.95rem',
                           fontWeight: 700,
-                          color: isExpense ? '#f43f5e' : '#10b981',
+                          color: isInvestment ? '#a78bfa' : isExpense ? '#f43f5e' : '#10b981',
                         }}
                       >
-                        {isExpense ? '-' : '+'} {formatCurrency(item.amount)}
+                        {isInvestment ? '-' : isExpense ? '-' : '+'} {formatCurrency(item.amount)}
                       </span>
                       <button
                         onClick={() => {
