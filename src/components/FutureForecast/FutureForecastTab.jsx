@@ -16,7 +16,8 @@ import {
   Flame,
   Award,
   Zap,
-  Info
+  Info,
+  ChevronDown
 } from 'lucide-react';
 
 export const FutureForecastTab = ({ onOpenSettings }) => {
@@ -27,6 +28,7 @@ export const FutureForecastTab = ({ onOpenSettings }) => {
   const [investmentGoalInput, setInvestmentGoalInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isIdealExpanded, setIsIdealExpanded] = useState(true);
 
   // Carrega valores salvos no perfil
   useEffect(() => {
@@ -370,147 +372,241 @@ export const FutureForecastTab = ({ onOpenSettings }) => {
         </form>
       </div>
 
-      {/* Os 3 Pilares Estratégicos Baseados no Salário */}
-      <div>
-        <div style={{ marginBottom: '14px' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px', margin: '0 0 4px 0' }}>
-            🎯 Seus 3 Números Estratégicos
-          </h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
-            Métricas essenciais calculadas com base no seu salário de {formatCurrency(numericSalary)}:
-          </p>
-        </div>
-
-        <div
+      {/* Barra Retrátil: Investimento Ideal para Você */}
+      <div
+        className="glass-card"
+        style={{
+          border: '1px solid rgba(16, 185, 129, 0.35)',
+          overflow: 'hidden',
+          transition: 'all 0.3s ease',
+        }}
+      >
+        {/* Cabeçalho Clicável da Barra Retrátil */}
+        <button
+          type="button"
+          onClick={() => setIsIdealExpanded((prev) => !prev)}
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '16px',
+            width: '100%',
+            padding: '16px 20px',
+            background: isIdealExpanded
+              ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.08) 100%)'
+              : 'rgba(255, 255, 255, 0.03)',
+            border: 'none',
+            borderBottom: isIdealExpanded ? '1px solid rgba(16, 185, 129, 0.2)' : 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            textAlign: 'left',
+            color: 'inherit',
+            transition: 'all 0.2s ease',
           }}
         >
-          {/* Card 1: Meta da Liberdade Financeira (Salário x 100) */}
-          <div
-            className="glass-card"
-            style={{
-              padding: '22px',
-              border: '1px solid rgba(16, 185, 129, 0.35)',
-              background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.1) 0%, rgba(18, 24, 38, 0.9) 100%)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span
+              style={{
+                background: 'rgba(16, 185, 129, 0.2)',
+                color: 'var(--primary)',
+                padding: '8px',
+                borderRadius: '10px',
+                display: 'inline-flex',
+                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)',
+              }}
+            >
+              <Target size={20} />
+            </span>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>
+                  🎯 INVESTIMENTO IDEAL PARA VOCÊ
+                </span>
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    background: 'rgba(16, 185, 129, 0.18)',
+                    color: 'var(--primary)',
+                    border: '1px solid rgba(16, 185, 129, 0.35)',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                  }}
+                >
+                  3 Pilares
+                </span>
+              </div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                {numericSalary > 0
+                  ? `Baseado no seu salário de ${formatCurrency(numericSalary)}: Meta da Liberdade, Aporte Ideal e Reserva.`
+                  : 'Defina seu salário acima para calcular seu investimento ideal e reserva.'}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span
+              style={{
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                color: 'var(--text-dim)',
+              }}
+              className="hide-mobile"
+            >
+              {isIdealExpanded ? 'Recolher' : 'Expandir'}
+            </span>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: 'rgba(255, 255, 255, 0.06)',
+                color: 'var(--primary)',
+                transform: isIdealExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.25s ease',
+              }}
+            >
+              <ChevronDown size={18} />
+            </span>
+          </div>
+        </button>
+
+        {/* Conteúdo Retrátil com os 3 Cards */}
+        {isIdealExpanded && (
+          <div style={{ padding: '20px' }}>
             <div
               style={{
-                position: 'absolute',
-                top: '-15px',
-                right: '-15px',
-                width: '80px',
-                height: '80px',
-                background: 'radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%)',
-                borderRadius: '50%',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '16px',
               }}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span
+            >
+              {/* Card 1: Meta da Liberdade Financeira (Salário x 100) */}
+              <div
+                className="glass-card"
                 style={{
-                  background: 'rgba(16, 185, 129, 0.2)',
-                  color: 'var(--primary)',
-                  padding: '6px',
-                  borderRadius: '8px',
-                  display: 'inline-flex',
+                  padding: '22px',
+                  border: '1px solid rgba(16, 185, 129, 0.35)',
+                  background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.1) 0%, rgba(18, 24, 38, 0.9) 100%)',
+                  position: 'relative',
+                  overflow: 'hidden',
                 }}
               >
-                <Target size={18} />
-              </span>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--primary)' }}>
-                Meta da Liberdade (Salário × 100)
-              </span>
-            </div>
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '-15px',
+                    right: '-15px',
+                    width: '80px',
+                    height: '80px',
+                    background: 'radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%)',
+                    borderRadius: '50%',
+                  }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span
+                    style={{
+                      background: 'rgba(16, 185, 129, 0.2)',
+                      color: 'var(--primary)',
+                      padding: '6px',
+                      borderRadius: '8px',
+                      display: 'inline-flex',
+                    }}
+                  >
+                    <Target size={18} />
+                  </span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--primary)' }}>
+                    Meta da Liberdade (Salário × 100)
+                  </span>
+                </div>
 
-            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#fff', marginBottom: '6px', letterSpacing: '-0.5px' }}>
-              {formatCurrency(freedomGoalAmount)}
-            </div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#fff', marginBottom: '6px', letterSpacing: '-0.5px' }}>
+                  {formatCurrency(freedomGoalAmount)}
+                </div>
 
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.4', margin: 0 }}>
-              Acumulando esse valor a <strong>1% ao mês</strong>, os juros pagam exatamente <strong>100% do seu salário ({formatCurrency(numericSalary)})</strong> todo mês, sem você trabalhar!
-            </p>
-          </div>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.4', margin: 0 }}>
+                  Acumulando esse valor a <strong>1% ao mês</strong>, os juros pagam exatamente <strong>100% do seu salário ({formatCurrency(numericSalary)})</strong> todo mês, sem você trabalhar!
+                </p>
+              </div>
 
-          {/* Card 2: Aporte Mensal Recomendado (Salário x 0,2) */}
-          <div
-            className="glass-card"
-            style={{
-              padding: '22px',
-              border: '1px solid rgba(6, 182, 212, 0.35)',
-              background: 'linear-gradient(180deg, rgba(6, 182, 212, 0.1) 0%, rgba(18, 24, 38, 0.9) 100%)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span
+              {/* Card 2: Aporte Mensal Recomendado (Salário x 0,2) */}
+              <div
+                className="glass-card"
                 style={{
-                  background: 'rgba(6, 182, 212, 0.2)',
-                  color: 'var(--secondary)',
-                  padding: '6px',
-                  borderRadius: '8px',
-                  display: 'inline-flex',
+                  padding: '22px',
+                  border: '1px solid rgba(6, 182, 212, 0.35)',
+                  background: 'linear-gradient(180deg, rgba(6, 182, 212, 0.1) 0%, rgba(18, 24, 38, 0.9) 100%)',
+                  position: 'relative',
+                  overflow: 'hidden',
                 }}
               >
-                <PiggyBank size={18} />
-              </span>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--secondary)' }}>
-                Aporte Mensal Ideal (Salário × 0,20)
-              </span>
-            </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span
+                    style={{
+                      background: 'rgba(6, 182, 212, 0.2)',
+                      color: 'var(--secondary)',
+                      padding: '6px',
+                      borderRadius: '8px',
+                      display: 'inline-flex',
+                    }}
+                  >
+                    <PiggyBank size={18} />
+                  </span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--secondary)' }}>
+                    Aporte Mensal Ideal (Salário × 0,20)
+                  </span>
+                </div>
 
-            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#fff', marginBottom: '6px', letterSpacing: '-0.5px' }}>
-              {formatCurrency(recommendedMonthlyContribution)}
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', fontWeight: 500 }}> /mês</span>
-            </div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#fff', marginBottom: '6px', letterSpacing: '-0.5px' }}>
+                  {formatCurrency(recommendedMonthlyContribution)}
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', fontWeight: 500 }}> /mês</span>
+                </div>
 
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.4', margin: 0 }}>
-              A clássica regra dos 20%: investindo este valor todos os meses você constrói a sua independência sem abrir mão da sua qualidade de vida atual.
-            </p>
-          </div>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.4', margin: 0 }}>
+                  A clássica regra dos 20%: investindo este valor todos os meses você constrói a sua independência sem abrir mão da sua qualidade de vida atual.
+                </p>
+              </div>
 
-          {/* Card 3: Reserva de Emergência (Salário x 6) */}
-          <div
-            className="glass-card"
-            style={{
-              padding: '22px',
-              border: '1px solid rgba(245, 158, 11, 0.35)',
-              background: 'linear-gradient(180deg, rgba(245, 158, 11, 0.1) 0%, rgba(18, 24, 38, 0.9) 100%)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span
+              {/* Card 3: Reserva de Emergência (Salário x 6) */}
+              <div
+                className="glass-card"
                 style={{
-                  background: 'rgba(245, 158, 11, 0.2)',
-                  color: '#f59e0b',
-                  padding: '6px',
-                  borderRadius: '8px',
-                  display: 'inline-flex',
+                  padding: '22px',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  background: 'linear-gradient(180deg, rgba(245, 158, 11, 0.1) 0%, rgba(18, 24, 38, 0.9) 100%)',
+                  position: 'relative',
+                  overflow: 'hidden',
                 }}
               >
-                <ShieldCheck size={18} />
-              </span>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#f59e0b' }}>
-                Reserva de Emergência (Salário × 6)
-              </span>
-            </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span
+                    style={{
+                      background: 'rgba(245, 158, 11, 0.2)',
+                      color: '#f59e0b',
+                      padding: '6px',
+                      borderRadius: '8px',
+                      display: 'inline-flex',
+                    }}
+                  >
+                    <ShieldCheck size={18} />
+                  </span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#f59e0b' }}>
+                    Reserva de Emergência (Salário × 6)
+                  </span>
+                </div>
 
-            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#fff', marginBottom: '6px', letterSpacing: '-0.5px' }}>
-              {formatCurrency(emergencyFundAmount)}
-            </div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#fff', marginBottom: '6px', letterSpacing: '-0.5px' }}>
+                  {formatCurrency(emergencyFundAmount)}
+                </div>
 
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.4', margin: 0 }}>
-              Equivalente a <strong>6 meses do seu salário</strong> guardados em renda fixa segura com liquidez imediata (CDB 100% CDI ou Tesouro Selic) para total tranquilidade.
-            </p>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.4', margin: 0 }}>
+                  Equivalente a <strong>6 meses do seu salário</strong> guardados em renda fixa segura com liquidez imediata (CDB 100% CDI ou Tesouro Selic) para total tranquilidade.
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Destaque: Tempo estimado para a liberdade com o aporte escolhido */}
