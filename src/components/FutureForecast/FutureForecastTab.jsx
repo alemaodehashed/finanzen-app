@@ -372,6 +372,62 @@ export const FutureForecastTab = ({ onOpenSettings }) => {
         </form>
       </div>
 
+      {/* Destaque: Tempo estimado para a liberdade com o aporte escolhido */}
+      {timeToFreedom && (
+        <div
+          className="glass-card"
+          style={{
+            padding: '18px 24px',
+            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(16, 185, 129, 0.1))',
+            border: '1px solid rgba(139, 92, 246, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '16px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span
+              style={{
+                background: 'rgba(139, 92, 246, 0.25)',
+                color: '#a78bfa',
+                padding: '10px',
+                borderRadius: '12px',
+                display: 'inline-flex',
+              }}
+            >
+              <Clock size={24} />
+            </span>
+            <div>
+              <div style={{ fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', color: '#a78bfa' }}>
+                Tempo até a Liberdade Financeira Total
+              </div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>
+                Aportando {formatCurrency(numericGoal)}/mês: você atinge sua meta em{' '}
+                <span style={{ color: '#10b981' }}>
+                  {timeToFreedom.years > 0 ? `${timeToFreedom.years} anos ` : ''}
+                  {timeToFreedom.remainingMonths > 0 ? `e ${timeToFreedom.remainingMonths} meses` : ''}
+                </span>!
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: '8px 14px',
+              background: 'rgba(0, 0, 0, 0.3)',
+              borderRadius: '8px',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              fontSize: '0.8rem',
+              color: 'var(--text-muted)',
+            }}
+          >
+            Meta: <strong>{formatCurrency(freedomGoalAmount)}</strong>
+          </div>
+        </div>
+      )}
+
       {/* Barra Retrátil: Investimento Ideal para Você */}
       <div
         className="glass-card"
@@ -609,61 +665,6 @@ export const FutureForecastTab = ({ onOpenSettings }) => {
         )}
       </div>
 
-      {/* Destaque: Tempo estimado para a liberdade com o aporte escolhido */}
-      {timeToFreedom && (
-        <div
-          className="glass-card"
-          style={{
-            padding: '18px 24px',
-            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(16, 185, 129, 0.1))',
-            border: '1px solid rgba(139, 92, 246, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '16px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span
-              style={{
-                background: 'rgba(139, 92, 246, 0.25)',
-                color: '#a78bfa',
-                padding: '10px',
-                borderRadius: '12px',
-                display: 'inline-flex',
-              }}
-            >
-              <Clock size={24} />
-            </span>
-            <div>
-              <div style={{ fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', color: '#a78bfa' }}>
-                Tempo até a Liberdade Financeira Total
-              </div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>
-                Aportando {formatCurrency(numericGoal)}/mês: você atinge sua meta em{' '}
-                <span style={{ color: '#10b981' }}>
-                  {timeToFreedom.years > 0 ? `${timeToFreedom.years} anos ` : ''}
-                  {timeToFreedom.remainingMonths > 0 ? `e ${timeToFreedom.remainingMonths} meses` : ''}
-                </span>!
-              </div>
-            </div>
-          </div>
-
-          <div
-            style={{
-              padding: '8px 14px',
-              background: 'rgba(0, 0, 0, 0.3)',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              fontSize: '0.8rem',
-              color: 'var(--text-muted)',
-            }}
-          >
-            Meta: <strong>{formatCurrency(freedomGoalAmount)}</strong>
-          </div>
-        </div>
-      )}
 
       {/* Projeções de Juros Compostos a 1% ao mês (5, 10, 20 e 30 anos) */}
       <div>
