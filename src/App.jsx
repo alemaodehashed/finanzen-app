@@ -147,25 +147,25 @@ const MainApp = () => {
                   transition: 'var(--transition)',
                 }}
               >
-                {/* Tag VER AGORA em vermelho pequeno */}
+                {/* Tag VER em vermelho pequeno e clean */}
                 <span
                   style={{
                     position: 'absolute',
-                    top: '-9px',
-                    right: '10px',
+                    top: '-7px',
+                    right: '8px',
                     background: '#ef4444',
                     color: '#fff',
-                    fontSize: '0.62rem',
-                    fontWeight: 900,
-                    letterSpacing: '0.5px',
+                    fontSize: '0.55rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.4px',
                     textTransform: 'uppercase',
-                    padding: '1px 6px',
-                    borderRadius: '6px',
-                    boxShadow: '0 2px 8px rgba(239, 68, 68, 0.6)',
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    boxShadow: '0 1px 4px rgba(239, 68, 68, 0.4)',
                     lineHeight: '1.2',
                   }}
                 >
-                  VER AGORA
+                  VER
                 </span>
                 <TrendingUp size={16} />
                 <span>Previsão Futura & Liberdade</span>

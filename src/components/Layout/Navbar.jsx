@@ -116,20 +116,20 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
                 <span
                   style={{
                     position: 'absolute',
-                    top: '-7px',
+                    top: '-6px',
                     right: '3px',
                     background: '#ef4444',
                     color: '#fff',
-                    fontSize: '0.54rem',
-                    fontWeight: 900,
+                    fontSize: '0.5rem',
+                    fontWeight: 800,
                     padding: '1px 4px',
-                    borderRadius: '4px',
-                    letterSpacing: '0.4px',
-                    boxShadow: '0 2px 4px rgba(239, 68, 68, 0.5)',
+                    borderRadius: '3px',
+                    letterSpacing: '0.3px',
+                    boxShadow: '0 1px 4px rgba(239, 68, 68, 0.4)',
                     lineHeight: '1.2',
                   }}
                 >
-                  VER AGORA
+                  VER
                 </span>
                 <TrendingUp size={13} />
                 <span>Previsão Futura</span>
