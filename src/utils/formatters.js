@@ -8,12 +8,25 @@ export const formatCurrency = (val) => {
 
 export const formatDate = (dateStr) => {
   if (!dateStr) return '';
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    const [y, m, d] = parts;
-    return `${d}/${m}/${y}`;
+  try {
+    if (typeof dateStr === 'string') {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const [y, m, d] = parts;
+        return `${d.slice(0, 2)}/${m}/${y}`;
+      }
+    }
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+    return String(dateStr);
+  } catch {
+    return String(dateStr || '');
   }
-  return dateStr;
 };
 
 export const generateId = (prefix = 'fin') => {

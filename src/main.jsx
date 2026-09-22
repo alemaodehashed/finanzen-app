@@ -9,6 +9,7 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker
       .register('/sw.js')
       .then((reg) => {
+        reg.update();
         console.log('PWA Service Worker registrado com sucesso:', reg.scope);
       })
       .catch((err) => {

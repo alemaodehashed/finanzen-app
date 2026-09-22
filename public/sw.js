@@ -1,5 +1,5 @@
 // Service Worker - FinanTEMP's PWA
-const CACHE_NAME = 'finantemps-cache-v1';
+const CACHE_NAME = 'finantemps-cache-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -9,22 +9,24 @@ const ASSETS_TO_CACHE = [
   '/icon-512.png'
 ];
 
-// Instalação do Service Worker e pré-cache dos assets estáticos
+// Instalação do Service Worker
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+      return cache.addAll(ASSETS_TO_CACHE).catch(() => {});
+    })
   );
 });
 
-// Ativação e limpeza de caches antigos
+// Ativação e limpeza imediata de caches antigos
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((name) => {
           if (name !== CACHE_NAME) {
+            console.log('Removendo cache antigo:', name);
             return caches.delete(name);
           }
         })

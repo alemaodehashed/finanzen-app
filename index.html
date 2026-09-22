@@ -24,5 +24,23 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      window.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+          var root = document.getElementById('root');
+          if (root && (!root.innerHTML || root.innerHTML.trim() === '')) {
+            console.warn('Detectado atraso no carregamento inicial. Forçando sincronização limpa...');
+            root.innerHTML = '<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; font-family: Inter, sans-serif; text-align: center; color: #fff;">' +
+              '<div style="max-width: 440px; padding: 32px 24px; background: rgba(15,23,42,0.95); border: 1px solid rgba(16,185,129,0.4); border-radius: 16px; box-shadow: 0 16px 40px rgba(0,0,0,0.6);">' +
+                '<div style="font-size: 2.4rem; margin-bottom: 10px;">⚡</div>' +
+                '<h2 style="font-size: 1.25rem; font-weight: 800; color: #fff; margin-bottom: 8px;">Nova Versão Detectada</h2>' +
+                '<p style="font-size: 0.88rem; color: #94a3b8; margin-bottom: 20px; line-height: 1.5;">O aplicativo recebeu uma atualização importante. Clique no botão para carregar a versão mais recente:</p>' +
+                '<button onclick="if(window.caches){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n);});});} if(navigator.serviceWorker){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(s){s.unregister();});});} window.location.reload(true);" style="background: linear-gradient(135deg, #10b981, #059669); color: #fff; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(16,185,129,0.35);">Atualizar e Entrar Agora</button>' +
+              '</div>' +
+            '</div>';
+          }
+        }, 3500);
+      });
+    </script>
   </body>
 </html>

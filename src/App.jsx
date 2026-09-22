@@ -174,12 +174,115 @@ const MainApp = () => {
   );
 };
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('ErrorBoundary capturou um erro:', error, errorInfo);
+  }
+
+  handleCleanAndReload = () => {
+    try {
+      localStorage.removeItem('finanzen_current_user');
+      localStorage.removeItem('finanzen_admin_session');
+      sessionStorage.clear();
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          regs.forEach((r) => r.unregister());
+        });
+      }
+      if (window.caches) {
+        caches.keys().then((keys) => {
+          keys.forEach((k) => caches.delete(k));
+        });
+      }
+    } catch (e) {}
+    window.location.reload();
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px',
+            background: 'radial-gradient(ellipse at top, #1e293b 0%, #0b1120 100%)',
+            color: '#fff',
+            fontFamily: 'Inter, sans-serif',
+            textAlign: 'center',
+          }}
+        >
+          <div
+            style={{
+              maxWidth: '520px',
+              width: '100%',
+              padding: '36px 28px',
+              background: 'rgba(15, 23, 42, 0.95)',
+              border: '1px solid rgba(16, 185, 129, 0.35)',
+              borderRadius: '16px',
+              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
+            }}
+          >
+            <div style={{ fontSize: '2.8rem', marginBottom: '14px' }}>🛡️</div>
+            <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff', marginBottom: '10px' }}>
+              Finan<span style={{ color: '#10b981' }}>TEMP's</span> • Carregando com Segurança
+            </h2>
+            <p style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '24px', lineHeight: 1.6 }}>
+              Houve uma pequena oscilação no cache local do seu navegador durante a atualização. Clique abaixo para restabelecer a conexão limpa:
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="btn btn-primary"
+                style={{ padding: '12px 24px', fontWeight: 700 }}
+              >
+                Recarregar Página
+              </button>
+              <button
+                type="button"
+                onClick={this.handleCleanAndReload}
+                className="btn btn-secondary"
+                style={{ padding: '12px 20px' }}
+              >
+                Limpar Cache e Reabrir
+              </button>
+            </div>
+            {this.state.error && (
+              <details style={{ marginTop: '22px', textAlign: 'left', fontSize: '0.74rem', color: '#64748b' }}>
+                <summary style={{ cursor: 'pointer', color: '#94a3b8' }}>Ver detalhes do erro</summary>
+                <pre style={{ marginTop: '8px', padding: '10px', background: 'rgba(0,0,0,0.4)', borderRadius: '8px', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>
+                  {String(this.state.error?.stack || this.state.error?.message || this.state.error)}
+                </pre>
+              </details>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   return (
-    <AuthProvider>
-      <FinanceProvider>
-        <MainApp />
-      </FinanceProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <FinanceProvider>
+          <MainApp />
+        </FinanceProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
