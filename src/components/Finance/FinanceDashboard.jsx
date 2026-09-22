@@ -18,7 +18,6 @@ import {
   Filter,
   Target,
   Database,
-  RefreshCw,
   Landmark,
   PiggyBank,
   PieChart
@@ -33,7 +32,7 @@ const MONTHS = [
 
 export const FinanceDashboard = ({ onOpenNewModal }) => {
   const { profile } = useAuth();
-  const { records, deleteRecord, syncStatus, refreshRecords } = useFinance();
+  const { records, deleteRecord } = useFinance();
 
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
@@ -160,57 +159,7 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          {/* Indicador de Status da Nuvem / Botão Sincronizar */}
-          <button
-            type="button"
-            onClick={refreshRecords}
-            title={
-              syncStatus === 'synced'
-                ? 'Conectado à Nuvem (dados sincronizados). Clique para recarregar.'
-                : syncStatus === 'syncing'
-                ? 'Sincronizando com a Nuvem...'
-                : 'Salvo localmente neste dispositivo. Clique para sincronizar com a Nuvem.'
-            }
-            className="btn btn-secondary btn-sm"
-            style={{
-              padding: '9px 14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              borderRadius: '8px',
-              borderColor:
-                syncStatus === 'synced'
-                  ? 'rgba(16, 185, 129, 0.4)'
-                  : syncStatus === 'syncing'
-                  ? 'rgba(59, 130, 246, 0.4)'
-                  : 'rgba(234, 179, 8, 0.4)',
-              color:
-                syncStatus === 'synced'
-                  ? '#10b981'
-                  : syncStatus === 'syncing'
-                  ? '#60a5fa'
-                  : '#eab308',
-              background: 'rgba(0, 0, 0, 0.25)',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <RefreshCw
-              size={14}
-              style={{
-                animation: syncStatus === 'syncing' ? 'spin 1s linear infinite' : 'none',
-              }}
-            />
-            <span style={{ fontSize: '0.80rem', fontWeight: 700 }}>
-              {syncStatus === 'synced'
-                ? 'Nuvem Sincronizada'
-                : syncStatus === 'syncing'
-                ? 'Sincronizando...'
-                : 'Sincronizar Nuvem'}
-            </span>
-          </button>
-
+        <div>
           <button onClick={onOpenNewModal} className="btn btn-primary" style={{ padding: '12px 20px' }}>
             <Plus size={18} />
             <span>Novo Lançamento</span>

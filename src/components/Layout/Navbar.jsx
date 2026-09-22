@@ -1,61 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Sparkles, Download, LogOut, Smartphone, CheckCircle, Crown, Settings, Shield, Wallet, TrendingUp } from 'lucide-react';
-import { PWAInstallModal } from './PWAInstallModal';
+import { Sparkles, Download, LogOut, CheckCircle, Crown, Settings, Shield, Wallet, TrendingUp } from 'lucide-react';
 
 export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbout, onExportCSV, onPrint, activeTab, onSelectTab }) => {
   const { user, profile, isAdmin, signOut } = useAuth();
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
-
-  useEffect(() => {
-    // Detecta se já está rodando como aplicativo instalado
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      window.navigator.standalone === true;
-    if (isStandalone) {
-      setIsInstalled(true);
-    }
-
-    const handleBeforeInstall = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-
-    const handleAppInstalled = () => {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    window.addEventListener('appinstalled', handleAppInstalled);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    // 1. Se o navegador já capturou o evento de instalação (Chrome, Android, Edge, etc.), instala direto!
-    if (deferredPrompt) {
-      try {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-          setIsInstalled(true);
-          setDeferredPrompt(null);
-          return;
-        }
-      } catch (err) {
-        console.warn('Erro no prompt nativo:', err);
-      }
-    }
-
-    // 2. Se for Safari iOS ou se o navegador precisar de orientação manual, abre o modal
-    setIsInstallModalOpen(true);
-  };
 
   return (
     <header
@@ -170,30 +118,6 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
             </div>
           )}
 
-          {/* Botão PWA Instalar no Celular */}
-          {!isInstalled && (
-            <button
-              type="button"
-              onClick={handleInstallClick}
-              className="btn btn-sm"
-              title="Instalar no Celular (Aplicativo PWA)"
-              style={{
-                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.15))',
-                border: '1px solid rgba(16, 185, 129, 0.45)',
-                color: '#10b981',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)',
-              }}
-            >
-              <Smartphone size={15} />
-              <span>Instalar App</span>
-            </button>
-          )}
-
           {/* Exportar */}
           <button
             onClick={onExportCSV}
@@ -276,14 +200,6 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
           )}
         </div>
       </div>
-
-      {/* Modal de Instalação do Aplicativo (PWA) */}
-      <PWAInstallModal
-        isOpen={isInstallModalOpen}
-        onClose={() => setIsInstallModalOpen(false)}
-        deferredPrompt={deferredPrompt}
-        onInstalled={() => setIsInstalled(true)}
-      />
     </header>
   );
 };
