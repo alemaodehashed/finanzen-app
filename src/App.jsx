@@ -127,6 +127,7 @@ const MainApp = () => {
                 type="button"
                 onClick={() => setActiveMainTab('forecast')}
                 style={{
+                  position: 'relative',
                   background:
                     activeMainTab === 'forecast'
                       ? 'linear-gradient(135deg, #06b6d4 0%, #0284c7 100%)'
@@ -146,6 +147,26 @@ const MainApp = () => {
                   transition: 'var(--transition)',
                 }}
               >
+                {/* Tag VER AGORA em vermelho pequeno */}
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-9px',
+                    right: '10px',
+                    background: '#ef4444',
+                    color: '#fff',
+                    fontSize: '0.62rem',
+                    fontWeight: 900,
+                    letterSpacing: '0.5px',
+                    textTransform: 'uppercase',
+                    padding: '1px 6px',
+                    borderRadius: '6px',
+                    boxShadow: '0 2px 8px rgba(239, 68, 68, 0.6)',
+                    lineHeight: '1.2',
+                  }}
+                >
+                  VER AGORA
+                </span>
                 <TrendingUp size={16} />
                 <span>Previsão Futura & Liberdade</span>
               </button>

@@ -98,6 +98,7 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
                 type="button"
                 onClick={() => onSelectTab && onSelectTab('forecast')}
                 style={{
+                  position: 'relative',
                   background: activeTab === 'forecast' ? 'var(--secondary)' : 'transparent',
                   color: activeTab === 'forecast' ? '#000' : 'var(--text-muted)',
                   fontWeight: 700,
@@ -112,6 +113,24 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
                   transition: 'var(--transition)',
                 }}
               >
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-7px',
+                    right: '3px',
+                    background: '#ef4444',
+                    color: '#fff',
+                    fontSize: '0.54rem',
+                    fontWeight: 900,
+                    padding: '1px 4px',
+                    borderRadius: '4px',
+                    letterSpacing: '0.4px',
+                    boxShadow: '0 2px 4px rgba(239, 68, 68, 0.5)',
+                    lineHeight: '1.2',
+                  }}
+                >
+                  VER AGORA
+                </span>
                 <TrendingUp size={13} />
                 <span>Previsão Futura</span>
               </button>
