@@ -14,11 +14,48 @@ import {
   Sparkles,
   UserCheck,
   Check,
-  Instagram
+  Instagram,
+  Trash2,
+  CalendarCheck
 } from 'lucide-react';
 
+const formatLastAccess = (dateStr) => {
+  if (!dateStr) return 'Nunca acessou';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Nunca acessou';
+
+    const now = new Date();
+    const isToday =
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear();
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday =
+      d.getDate() === yesterday.getDate() &&
+      d.getMonth() === yesterday.getMonth() &&
+      d.getFullYear() === yesterday.getFullYear();
+
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+
+    if (isToday) return `Hoje às ${timeStr}`;
+    if (isYesterday) return `Ontem às ${timeStr}`;
+
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year} às ${timeStr}`;
+  } catch {
+    return 'Data indisponível';
+  }
+};
+
 export const AdminPanelModal = ({ isOpen, onClose }) => {
-  const { fetchAllProfiles, updateUserStatus } = useAuth();
+  const { fetchAllProfiles, updateUserStatus, deleteUser } = useAuth();
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,6 +76,24 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  // Excluir usuário definitivamente
+  const handleDeleteUser = async (userId, userName) => {
+    if (
+      confirm(
+        `Tem certeza que deseja EXCLUIR DEFINITIVAMENTE o usuário "${userName}"?\n\nTodos os dados e lançamentos deste usuário serão apagados do sistema e esta ação não poderá ser desfeita.`
+      )
+    ) {
+      const res = await deleteUser(userId);
+      if (res?.error) {
+        alert(res.error);
+        return;
+      }
+      setActionSuccess(`Usuário "${userName}" excluído com sucesso!`);
+      setProfiles((prev) => prev.filter((p) => p.id !== userId));
+      setTimeout(() => setActionSuccess(''), 4000);
+    }
+  };
 
   // Autorizar / Liberar acesso do usuário
   const handleApproveUser = async (userId, userName) => {
@@ -360,13 +415,37 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                         )}
                       </div>
 
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '3px' }}>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         {client.cpf && (
-                          <span style={{ color: 'var(--primary)', fontWeight: 700, marginRight: '8px' }}>
+                          <span style={{ color: 'var(--primary)', fontWeight: 700 }}>
                             CPF: {formatCPF(client.cpf)}
                           </span>
                         )}
-                        <strong style={{ color: '#e2e8f0' }}>{client.email}</strong> {client.phone ? `• ${client.phone}` : ''} • Cadastro: {formatDate(client.created_at?.split('T')[0])}
+                        <strong style={{ color: '#e2e8f0' }}>{client.email}</strong>
+                        {client.phone && <span>• {client.phone}</span>}
+                      </div>
+
+                      {/* Último dia/horário de acesso e Data de Cadastro */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '6px', fontSize: '0.75rem' }}>
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            background: client.last_sign_in_at ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                            color: client.last_sign_in_at ? '#10b981' : 'var(--text-dim)',
+                            border: `1px solid ${client.last_sign_in_at ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`,
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <CalendarCheck size={13} color={client.last_sign_in_at ? '#10b981' : 'var(--text-dim)'} />
+                          <span>Último Acesso: <strong>{formatLastAccess(client.last_sign_in_at || client.updated_at)}</strong></span>
+                        </div>
+                        <span style={{ color: 'var(--text-dim)' }}>
+                          Criado em: {formatDate(client.created_at?.split('T')[0])}
+                        </span>
                       </div>
                     </div>
 
@@ -432,6 +511,24 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                         <UserCheck size={14} />
                         <span className="hide-mobile">{client.is_admin ? 'Tirar Admin' : 'Dar Admin'}</span>
                       </button>
+
+                      {/* Botão de Excluir Usuário (Proibido para admin dono) */}
+                      {!client.is_admin && client.email !== 'adam.tv2004@gmail.com' && client.cpf !== '00000000000' && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteUser(client.id, client.full_name || client.email)}
+                          className="btn btn-secondary btn-sm"
+                          style={{
+                            color: '#f43f5e',
+                            borderColor: 'rgba(244, 63, 94, 0.35)',
+                            background: 'rgba(244, 63, 94, 0.08)',
+                          }}
+                          title="Excluir este usuário e seus lançamentos permanentemente"
+                        >
+                          <Trash2 size={13} />
+                          <span className="hide-mobile">Excluir</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

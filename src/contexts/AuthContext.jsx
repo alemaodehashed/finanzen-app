@@ -133,6 +133,15 @@ export const AuthProvider = ({ children }) => {
       setProfile(currentUser);
       if (supabase && currentUser.id) {
         fetchProfile(currentUser.id, currentUser.email, currentUser.cpf);
+        supabase
+          .from('profiles')
+          .update({
+            last_sign_in_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', currentUser.id)
+          .then(() => {})
+          .catch(() => {});
       }
       setLoading(false);
       return;
@@ -268,6 +277,7 @@ export const AuthProvider = ({ children }) => {
       followed_instagram: true,
       savings_goal: 0,
       settings: { theme: 'dark', currency: 'BRL' },
+      last_sign_in_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -324,6 +334,7 @@ export const AuthProvider = ({ children }) => {
       is_admin: true,
       subscription_status: 'active',
       followed_instagram: true,
+      last_sign_in_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -475,18 +486,25 @@ export const AuthProvider = ({ children }) => {
       },
     };
 
-    saveDemoUser(foundProfile);
-    setUser(authUser);
-    setProfile(foundProfile);
+    const nowIso = new Date().toISOString();
+    const updatedFoundProfile = {
+      ...foundProfile,
+      last_sign_in_at: nowIso,
+      updated_at: nowIso,
+    };
 
-    // Sincroniza o perfil no Supabase para garantir persistência na nuvem
+    saveDemoUser(updatedFoundProfile);
+    setUser(authUser);
+    setProfile(updatedFoundProfile);
+
+    // Sincroniza o perfil no Supabase para garantir persistência na nuvem e último acesso
     if (supabase && foundProfile.id) {
       try {
-        await supabase.from('profiles').upsert(foundProfile);
+        await supabase.from('profiles').upsert(updatedFoundProfile);
       } catch (e) {}
     }
 
-    return { user: authUser, profile: foundProfile, error: null };
+    return { user: authUser, profile: updatedFoundProfile, error: null };
   };
 
   const signOut = async () => {
@@ -646,6 +664,48 @@ export const AuthProvider = ({ children }) => {
     return { success: true };
   };
 
+  // Excluir usuário definitivamente (disponível para a conta admin)
+  const deleteUser = async (userId) => {
+    if (!userId) return { error: 'ID do usuário não informado.' };
+
+    const list = getDemoUsers();
+    const target = list.find((u) => u.id === userId);
+
+    // Protege contra exclusão da conta mestre do dono ou de si mesmo
+    if (
+      target?.email === 'adam.tv2004@gmail.com' ||
+      target?.cpf === '00000000000' ||
+      user?.id === userId
+    ) {
+      return { error: 'Não é permitido excluir a conta principal do Administrador Dono.' };
+    }
+
+    // 1. Remove do armazenamento local
+    const updatedList = list.filter((u) => u.id !== userId);
+    try {
+      localStorage.setItem('finanzen_app_profiles', JSON.stringify(updatedList));
+    } catch (e) {}
+
+    // 2. Remove do Supabase (finance_records e profiles)
+    if (supabase) {
+      try {
+        // Exclui lançamentos financeiros do usuário
+        await supabase.from('finance_records').delete().eq('user_id', userId);
+        // Exclui o perfil
+        const { error } = await supabase.from('profiles').delete().eq('id', userId);
+        if (error) {
+          console.warn('Erro ao deletar perfil do Supabase:', error);
+          return { error: 'Erro ao deletar no Supabase: ' + error.message };
+        }
+      } catch (err) {
+        console.warn('Erro ao deletar usuário:', err);
+        return { error: 'Falha de conexão com o banco de dados.' };
+      }
+    }
+
+    return { success: true };
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -664,6 +724,7 @@ export const AuthProvider = ({ children }) => {
         markInstagramFollowed,
         fetchAllProfiles,
         updateUserStatus,
+        deleteUser,
         isSubscriptionActive,
         getDaysRemainingInTrial,
       }}
