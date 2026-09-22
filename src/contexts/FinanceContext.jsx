@@ -72,7 +72,7 @@ export const FinanceProvider = ({ children }) => {
 
   const storageKey = getStorageKey(user);
 
-  // Carregar lançamentos do usuário
+  // Carregar lançamentos do usuário com sincronização bidirecional em nuvem
   const loadRecords = useCallback(async () => {
     if (!user) {
       // Carrega registros de convidado se existirem
@@ -97,8 +97,12 @@ export const FinanceProvider = ({ children }) => {
     let localRecords = [];
     try {
       let saved = localStorage.getItem(storageKey);
+      const cleanUserCpf = user.cpf ? String(user.cpf).replace(/\D/g, '') : '';
       
-      // Checa chaves legadas para não perder nada (ex: pelo ID antigo ou CPF)
+      // Checa chaves legadas e alternativas para não perder nada do usuário
+      if (!saved && cleanUserCpf) {
+        saved = localStorage.getItem(`finanzen_records_${cleanUserCpf}`);
+      }
       if (!saved && user.id) {
         saved = localStorage.getItem(`finanzen_records_${user.id}`);
       }
@@ -151,7 +155,7 @@ export const FinanceProvider = ({ children }) => {
       return;
     }
 
-    // 2. Busca lançamentos diretamente do banco de dados Supabase
+    // 2. Busca lançamentos diretamente do banco de dados Supabase e sincroniza dados locais
     try {
       setSyncStatus('syncing');
       const { data, error } = await supabase
@@ -161,22 +165,39 @@ export const FinanceProvider = ({ children }) => {
         .order('date', { ascending: false });
 
       if (error) {
-        // Se houver erro de RLS ou conexão no Supabase, mantém os registros locais intactos!
-        console.warn('Supabase offline ou RLS restrito:', error.message);
+        console.warn('Supabase offline ou aguardando configuração de RLS:', error.message);
         setSyncStatus('local');
       } else if (data && data.length > 0) {
-        // Banco possui dados atualizados: mescla com dados locais não sincronizados para não perder nada
+        // Banco possui dados atualizados: mescla com dados locais não sincronizados
         const remoteIds = new Set(data.map((r) => r.id));
         const unmergedLocal = localRecords.filter((lr) => !remoteIds.has(lr.id));
-        const mergedRecords = [...data, ...unmergedLocal];
 
+        // Se existirem dados no computador que ainda não foram para a nuvem, sobe agora!
+        if (unmergedLocal.length > 0) {
+          try {
+            const recordsToUpload = unmergedLocal.map((r) => ({
+              id: r.id || generateId('rec'),
+              user_id: user.id,
+              date: r.date || new Date().toISOString().split('T')[0],
+              type: r.type,
+              category: r.category,
+              description: r.description || '',
+              amount: Number(r.amount) || 0,
+            }));
+            await supabase.from('finance_records').upsert(recordsToUpload);
+          } catch (uploadErr) {
+            console.warn('Erro ao subir pendências locais:', uploadErr);
+          }
+        }
+
+        const mergedRecords = [...data, ...unmergedLocal];
         setRecords(mergedRecords);
         localStorage.setItem(storageKey, JSON.stringify(mergedRecords));
         setSyncStatus('synced');
         setLastSyncTime(new Date());
       } else if (localRecords.length > 0) {
         // Banco remoto retornou vazio, mas temos dados locais:
-        // JAMAIS apagar os dados locais! Tentamos subir para o banco se possível
+        // Sobe IMEDIATAMENTE os dados do computador para o banco de dados na nuvem!
         const recordsToUpload = localRecords.map((r) => ({
           id: r.id || generateId('rec'),
           user_id: user.id,
@@ -194,7 +215,7 @@ export const FinanceProvider = ({ children }) => {
           setSyncStatus('synced');
           setLastSyncTime(new Date());
         } else {
-          // Mantém salvo localmente
+          console.warn('Aviso ao sincronizar registros com o banco:', upsertErr.message);
           setRecords(localRecords);
           localStorage.setItem(storageKey, JSON.stringify(localRecords));
           setSyncStatus('local');
@@ -203,6 +224,7 @@ export const FinanceProvider = ({ children }) => {
         // Nenhum dado nem local nem remoto
         setRecords([]);
         setSyncStatus('synced');
+        setLastSyncTime(new Date());
       }
     } catch (err) {
       console.warn('Falha de conexão com o banco de dados:', err);
@@ -210,7 +232,7 @@ export const FinanceProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [user, isDemoMode, storageKey, getStorageKey]);
+  }, [user, isDemoMode, storageKey]);
 
   useEffect(() => {
     loadRecords();
@@ -242,8 +264,8 @@ export const FinanceProvider = ({ children }) => {
       return updated;
     });
 
-    // Se estiver em modo demo ou sem Supabase configurado ou usuário não for UUID real
-    if (isDemoMode || !supabase || !isValidUUID(user.id)) {
+    // Se estiver em modo demo ou sem Supabase configurado
+    if (isDemoMode || !supabase || !user?.id) {
       setSyncStatus('local');
       return { success: true, data: newRecord, localOnly: true };
     }
@@ -262,7 +284,7 @@ export const FinanceProvider = ({ children }) => {
       });
 
       if (error) {
-        console.warn('Lançamento salvo localmente (aguardando sincronização com banco):', error.message);
+        console.warn('Lançamento salvo localmente (banco reportou):', error.message);
         setSyncStatus('local');
         return {
           success: true,
@@ -317,7 +339,7 @@ export const FinanceProvider = ({ children }) => {
       return updated;
     });
 
-    if (isDemoMode || !supabase || !isValidUUID(user.id)) {
+    if (isDemoMode || !supabase || !user?.id) {
       setSyncStatus('local');
       return { success: true, data: newRecords, localOnly: true };
     }
@@ -374,7 +396,7 @@ export const FinanceProvider = ({ children }) => {
       return updated;
     });
 
-    if (isDemoMode || !supabase || !isValidUUID(user.id)) {
+    if (isDemoMode || !supabase || !user?.id) {
       return { success: true };
     }
 
@@ -405,7 +427,7 @@ export const FinanceProvider = ({ children }) => {
       return updated;
     });
 
-    if (isDemoMode || !supabase || !isValidUUID(user.id)) {
+    if (isDemoMode || !supabase || !user?.id) {
       return { success: true };
     }
 

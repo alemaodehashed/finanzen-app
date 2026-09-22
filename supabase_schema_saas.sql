@@ -1,5 +1,5 @@
 -- ==============================================================================
--- SCHEMA DEFINITIVO E IDEMPOTENTE - FINANTEMP'S (PAINEL DO DONO & LANÇAMENTOS)
+-- SCHEMA DEFINITIVO E IDEMPOTENTE - FINANTEMP'S (PAINEL DO DONO & SINCRONIZAÇÃO EM NUVEM)
 -- Execute este script no SQL Editor do seu projeto Supabase:
 -- https://supabase.com/dashboard/project/dninsqoqjeiedkpflwwb/sql
 -- ==============================================================================
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now())
 );
 
--- Remove restrição estrita com auth.users para permitir cadastros com CPF/offline
+-- Remove restrição estrita com auth.users para permitir cadastros com CPF/email flexível
 ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_id_fkey;
 
 -- Adiciona todas as colunas necessárias na tabela profiles
@@ -30,100 +30,7 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS subscription_ends_at TIMESTAMPTZ;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now());
 
--- Habilita RLS na tabela de perfis
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-
--- POLÍTICAS DE PERFIS: A aplicação e o painel administrativo podem gerenciar contas
-DROP POLICY IF EXISTS "Ver perfis" ON public.profiles;
-DROP POLICY IF EXISTS "Perfis públicos para leitura" ON public.profiles;
-CREATE POLICY "Ver perfis" 
-  ON public.profiles FOR SELECT 
-  USING (true);
-
-DROP POLICY IF EXISTS "Inserir perfis" ON public.profiles;
-CREATE POLICY "Inserir perfis" 
-  ON public.profiles FOR INSERT 
-  WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Atualizar perfis" ON public.profiles;
-CREATE POLICY "Atualizar perfis" 
-  ON public.profiles FOR UPDATE 
-  USING (true);
-
-DROP POLICY IF EXISTS "Deletar perfis" ON public.profiles;
-CREATE POLICY "Deletar perfis" 
-  ON public.profiles FOR DELETE 
-  USING (true);
-
--- 2. TRIGGER AUTOMÁTICO: NOVO USUÁRIO CADASTRA PERFIL
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER 
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  user_email TEXT;
-  user_name TEXT;
-  is_owner BOOLEAN;
-BEGIN
-  user_email := lower(trim(COALESCE(new.email, new.raw_user_meta_data->>'email', '')));
-  user_name := COALESCE(new.raw_user_meta_data->>'full_name', split_part(user_email, '@', 1), 'Usuário');
-  is_owner := (user_email = 'adam.tv2004@gmail.com');
-
-  INSERT INTO public.profiles (
-    id,
-    email,
-    full_name,
-    is_admin,
-    subscription_status,
-    savings_goal
-  )
-  VALUES (
-    new.id,
-    user_email,
-    user_name,
-    is_owner,
-    'active',
-    0
-  )
-  ON CONFLICT (id) DO UPDATE SET
-    email = CASE 
-      WHEN public.profiles.email IS NULL OR public.profiles.email = '' 
-      THEN EXCLUDED.email 
-      ELSE public.profiles.email 
-    END,
-    full_name = COALESCE(public.profiles.full_name, EXCLUDED.full_name),
-    is_admin = CASE WHEN user_email = 'adam.tv2004@gmail.com' THEN true ELSE public.profiles.is_admin END;
-    
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- Sincronizar contas já existentes no auth.users que ainda não tenham perfil criado
-INSERT INTO public.profiles (id, email, full_name, is_admin, subscription_status)
-SELECT 
-  u.id, 
-  lower(trim(u.email)), 
-  COALESCE(u.raw_user_meta_data->>'full_name', split_part(u.email, '@', 1)),
-  (lower(trim(u.email)) = 'adam.tv2004@gmail.com'),
-  'active'
-FROM auth.users u
-ON CONFLICT (id) DO UPDATE SET
-  email = EXCLUDED.email,
-  is_admin = CASE WHEN EXCLUDED.email = 'adam.tv2004@gmail.com' THEN true ELSE public.profiles.is_admin END;
-
--- Garantir que a conta do Adam seja sempre Administrador Ativo
-UPDATE public.profiles
-SET is_admin = true, subscription_status = 'active'
-WHERE email = 'adam.tv2004@gmail.com';
-
--- 3. TABELA DE LANÇAMENTOS FINANCEIROS DOS CLIENTES
+-- 2. TABELA DE LANÇAMENTOS FINANCEIROS DOS CLIENTES
 CREATE TABLE IF NOT EXISTS public.finance_records (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -138,30 +45,49 @@ CREATE TABLE IF NOT EXISTS public.finance_records (
 -- Remove restrição de chave estrangeira com auth.users se existir
 ALTER TABLE public.finance_records DROP CONSTRAINT IF EXISTS finance_records_user_id_fkey;
 
--- Habilita RLS na tabela de lançamentos
+-- 3. HABILITA RLS E CONFIGURA POLÍTICAS PERMISSIVAS PARA ANON E AUTHENTICATED
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.finance_records ENABLE ROW LEVEL SECURITY;
 
--- Políticas de lançamentos financeiros: leitura e gravação liberadas para anon/autenticado
+-- Limpeza de políticas antigas em profiles
+DROP POLICY IF EXISTS "Permitir tudo perfis select" ON public.profiles;
+DROP POLICY IF EXISTS "Permitir tudo perfis insert" ON public.profiles;
+DROP POLICY IF EXISTS "Permitir tudo perfis update" ON public.profiles;
+DROP POLICY IF EXISTS "Permitir tudo perfis delete" ON public.profiles;
+DROP POLICY IF EXISTS "Ver perfis" ON public.profiles;
+DROP POLICY IF EXISTS "Perfis públicos para leitura" ON public.profiles;
+DROP POLICY IF EXISTS "Inserir perfis" ON public.profiles;
+DROP POLICY IF EXISTS "Atualizar perfis" ON public.profiles;
+DROP POLICY IF EXISTS "Deletar perfis" ON public.profiles;
+
+-- Criação das políticas ativas em profiles
+CREATE POLICY "Permitir tudo perfis select" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Permitir tudo perfis insert" ON public.profiles FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir tudo perfis update" ON public.profiles FOR UPDATE USING (true);
+CREATE POLICY "Permitir tudo perfis delete" ON public.profiles FOR DELETE USING (true);
+
+-- Limpeza de políticas antigas em finance_records
+DROP POLICY IF EXISTS "Permitir tudo finance select" ON public.finance_records;
+DROP POLICY IF EXISTS "Permitir tudo finance insert" ON public.finance_records;
+DROP POLICY IF EXISTS "Permitir tudo finance update" ON public.finance_records;
+DROP POLICY IF EXISTS "Permitir tudo finance delete" ON public.finance_records;
 DROP POLICY IF EXISTS "Usuários podem ver apenas suas finanças" ON public.finance_records;
-CREATE POLICY "Usuários podem ver apenas suas finanças" 
-  ON public.finance_records FOR SELECT 
-  USING (true);
-
 DROP POLICY IF EXISTS "Usuários podem inserir apenas suas finanças" ON public.finance_records;
-CREATE POLICY "Usuários podem inserir apenas suas finanças" 
-  ON public.finance_records FOR INSERT 
-  WITH CHECK (true);
-
 DROP POLICY IF EXISTS "Usuários podem atualizar apenas suas finanças" ON public.finance_records;
-CREATE POLICY "Usuários podem atualizar apenas suas finanças" 
-  ON public.finance_records FOR UPDATE 
-  USING (true);
+DROP POLICY IF EXISTS "Usuários podem excluir apenas suas finanças" ON public.finance_records;
 
-DROP POLICY IF EXISTS "Usuários podem deletar apenas suas finanças" ON public.finance_records;
-CREATE POLICY "Usuários podem deletar apenas suas finanças" 
-  ON public.finance_records FOR DELETE 
-  USING (true);
+-- Criação das políticas ativas em finance_records
+CREATE POLICY "Permitir tudo finance select" ON public.finance_records FOR SELECT USING (true);
+CREATE POLICY "Permitir tudo finance insert" ON public.finance_records FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir tudo finance update" ON public.finance_records FOR UPDATE USING (true);
+CREATE POLICY "Permitir tudo finance delete" ON public.finance_records FOR DELETE USING (true);
 
--- Índices otimizados
+-- Permissões de acesso aos papéis do Supabase
+GRANT ALL ON public.profiles TO anon, authenticated, service_role;
+GRANT ALL ON public.finance_records TO anon, authenticated, service_role;
+
+-- Índices otimizados para busca rápida
 CREATE INDEX IF NOT EXISTS idx_finance_user_date ON public.finance_records (user_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_finance_user_id ON public.finance_records (user_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_cpf ON public.profiles (cpf);
+CREATE INDEX IF NOT EXISTS idx_profiles_email ON public.profiles (email);
