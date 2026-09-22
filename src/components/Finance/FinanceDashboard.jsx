@@ -21,6 +21,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { CategoryReport } from './CategoryReport';
+import { CategoryBreakdownModal } from './CategoryBreakdownModal';
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -36,6 +37,8 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [viewMode, setViewMode] = useState('mes'); // 'mes', 'ano', 'todos'
   const [filterType, setFilterType] = useState('todos');
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // Helper seguro para extrair ano e mês de qualquer formato de data
   const parseDateParts = (dateStr) => {
@@ -73,10 +76,16 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
     return true;
   });
 
-  // Filtragem por tipo
+  // Categorias disponíveis no período selecionado
+  const availableCategories = Array.from(
+    new Set(periodRecords.map((r) => r.category).filter(Boolean))
+  );
+
+  // Filtragem por tipo e por categoria
   const displayRecords = periodRecords.filter((r) => {
-    if (filterType === 'todos') return true;
-    return r.type === filterType;
+    if (filterType !== 'todos' && r.type !== filterType) return false;
+    if (selectedCategory && r.category !== selectedCategory) return false;
+    return true;
   });
 
   // Cálculos
@@ -213,28 +222,57 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
           gap: '12px',
         }}
       >
-        {/* Modos: Mensal, Anual, Histórico */}
-        <div style={{ display: 'flex', gap: '6px', background: 'rgba(0, 0, 0, 0.25)', padding: '4px', borderRadius: '10px' }}>
+        {/* Modos: Mensal, Anual, Tudo e Botão Ver por Categoria */}
+        <div style={{ display: 'flex', gap: '6px', background: 'rgba(0, 0, 0, 0.25)', padding: '4px', borderRadius: '10px', flexWrap: 'wrap' }}>
           <button
             type="button"
             className={`btn btn-sm ${viewMode === 'mes' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setViewMode('mes')}
+            onClick={() => {
+              setViewMode('mes');
+              setSelectedCategory(null);
+            }}
           >
             <Calendar size={14} /> Mensal
           </button>
           <button
             type="button"
             className={`btn btn-sm ${viewMode === 'ano' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setViewMode('ano')}
+            onClick={() => {
+              setViewMode('ano');
+              setSelectedCategory(null);
+            }}
           >
             Anual
           </button>
           <button
             type="button"
             className={`btn btn-sm ${viewMode === 'todos' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setViewMode('todos')}
+            onClick={() => {
+              setViewMode('todos');
+              setSelectedCategory(null);
+            }}
           >
             Tudo
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm btn-secondary"
+            onClick={() => setIsCategoryModalOpen(true)}
+            style={{
+              borderColor: 'rgba(16, 185, 129, 0.4)',
+              color: '#10b981',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(16, 185, 129, 0.08)',
+              transition: 'all 0.2s ease',
+            }}
+            title="Ver detalhamento dos gastos por categoria"
+          >
+            <PieChart size={14} />
+            <span>Ver por Categoria</span>
           </button>
         </div>
 
@@ -303,8 +341,18 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
           </div>
         </div>
 
-        {/* Total Despesas */}
-        <div className="glass-card" style={{ padding: '20px', borderLeft: '4px solid #f43f5e' }}>
+        {/* Total Despesas (Clicável para detalhar categorias) */}
+        <div
+          className="glass-card"
+          onClick={() => setIsCategoryModalOpen(true)}
+          style={{
+            padding: '20px',
+            borderLeft: '4px solid #f43f5e',
+            cursor: 'pointer',
+            transition: 'transform 0.15s ease, border-color 0.15s ease',
+          }}
+          title="Clique para ver o detalhamento completo por categoria"
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>
               DESPESAS (SAÍDAS)
@@ -326,8 +374,11 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f43f5e' }}>
             {formatCurrency(totalSaidas)}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-            Casa: {formatCurrency(totalDespesaCasa)} | Negócio: {formatCurrency(totalNegocio)}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px', flexWrap: 'wrap', gap: '4px' }}>
+            <span>Casa: {formatCurrency(totalDespesaCasa)} | Negócio: {formatCurrency(totalNegocio)}</span>
+            <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.75rem' }}>
+              Ver por Categoria ➔
+            </span>
           </div>
         </div>
 
@@ -423,7 +474,12 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))', gap: '20px' }}>
         {/* Coluna 1: Relatório por Categorias */}
         <div>
-          <CategoryReport records={periodRecords} />
+          <CategoryReport
+            records={periodRecords}
+            onOpenBreakdown={() => setIsCategoryModalOpen(true)}
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+          />
         </div>
 
         {/* Coluna 2: Lista de Lançamentos */}
@@ -438,12 +494,12 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
               gap: '8px',
             }}
           >
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', margin: 0 }}>
               Extrato ({displayRecords.length})
             </h3>
 
             {/* Filtros */}
-            <div style={{ display: 'flex', gap: '4px' }}>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               <select
                 className="form-control"
                 style={{ padding: '4px 10px', fontSize: '0.8rem', width: 'auto' }}
@@ -456,6 +512,20 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
                 <option value="renda_extra">Renda Extra</option>
                 <option value="negocio">Negócio Próprio</option>
               </select>
+
+              {availableCategories.length > 0 && (
+                <select
+                  className="form-control"
+                  style={{ padding: '4px 10px', fontSize: '0.8rem', width: 'auto' }}
+                  value={selectedCategory || 'todas'}
+                  onChange={(e) => setSelectedCategory(e.target.value === 'todas' ? null : e.target.value)}
+                >
+                  <option value="todas">Todas as Categorias</option>
+                  {availableCategories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 
@@ -587,6 +657,15 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
           )}
         </div>
       </div>
+
+      {/* Modal de Detalhamento Completo por Categoria (Mensal e Anual) */}
+      <CategoryBreakdownModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        records={records}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+      />
     </div>
   );
 };
