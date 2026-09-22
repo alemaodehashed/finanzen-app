@@ -666,8 +666,7 @@ export const AuthProvider = ({ children }) => {
   );
 
   const fetchAllProfiles = async () => {
-    const localUsers = getDemoUsers();
-    let result = [];
+    let rawProfiles = [];
 
     if (supabase) {
       try {
@@ -676,79 +675,60 @@ export const AuthProvider = ({ children }) => {
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (!error && data && data.length > 0) {
-          const mapped = data.map((p) => {
-            const isOwner =
-              p.email === 'adam.tv2004@gmail.com' ||
-              p.email === 'lucasadamdeveloper@gmail.com' ||
-              p.cpf === '00000000000';
-            if (isOwner) {
-              return { ...p, is_admin: true, subscription_status: 'active' };
-            }
-            return p;
-          });
-
-          // Mescla perfis remotos e locais para que nenhum usuário desapareça
-          const remoteIds = new Set(mapped.map((p) => p.id));
-          const remoteEmails = new Set(mapped.map((p) => (p.email || '').toLowerCase()));
-          const unmergedLocals = localUsers
-            .filter(
-              (lu) => !remoteIds.has(lu.id) && !remoteEmails.has((lu.email || '').toLowerCase())
-            )
-            .map((lu) => {
-              const isOwner =
-                lu.email === 'adam.tv2004@gmail.com' ||
-                lu.email === 'lucasadamdeveloper@gmail.com' ||
-                lu.cpf === '00000000000';
-              if (isOwner) {
-                return { ...lu, is_admin: true, subscription_status: 'active' };
-              }
-              return lu;
-            });
-          result = [...mapped, ...unmergedLocals];
+        if (!error && Array.isArray(data) && data.length > 0) {
+          rawProfiles = data;
         }
       } catch (err) {
         console.warn('Erro ao buscar todos os perfis no Supabase:', err);
       }
     }
 
-    if (result.length === 0) {
-      result = localUsers.map((lu) => {
-        const isOwner =
-          lu.email === 'adam.tv2004@gmail.com' ||
-          lu.email === 'lucasadamdeveloper@gmail.com' ||
-          lu.cpf === '00000000000';
-        return isOwner ? { ...lu, is_admin: true, subscription_status: 'active' } : lu;
-      });
+    if (rawProfiles.length === 0) {
+      rawProfiles = getDemoUsers();
     }
 
-    // 1. Remove qualquer conta de probe/teste
-    result = result.filter((p) => !p.email?.includes('probe_test_account'));
-
-    // 2. Se o dono tem conta real com CPF, oculta o placeholder genérico 00000000000
-    const hasRealCpfOwner = result.some(
-      (p) =>
-        (p.email === 'lucasadamdeveloper@gmail.com' || p.email === 'adam.tv2004@gmail.com') &&
-        p.cpf &&
-        p.cpf !== '00000000000'
-    );
-    if (hasRealCpfOwner) {
-      result = result.filter(
-        (p) => p.id !== '00000000-0000-0000-0000-000000000001' && p.cpf !== '00000000000'
-      );
-    }
-
-    // 3. Deduplicação limpa por e-mail para nunca duplicar nenhum usuário
-    const seenEmails = new Set();
-    result = result.filter((p) => {
-      const email = (p.email || '').toLowerCase().trim();
-      if (!email) return true;
-      if (seenEmails.has(email)) return false;
-      seenEmails.add(email);
-      return true;
+    // 1. Marca permissões de dono para os e-mails principais
+    const mapped = rawProfiles.map((p) => {
+      const isOwner =
+        p.email === 'adam.tv2004@gmail.com' ||
+        p.email === 'lucasadamdeveloper@gmail.com' ||
+        p.cpf === '00000000000';
+      if (isOwner) {
+        return { ...p, is_admin: true, subscription_status: 'active' };
+      }
+      return p;
     });
 
-    return result;
+    // 2. Remove contas de teste temporárias (ex: probe_test)
+    let filtered = mapped.filter((p) => !p.email?.includes('probe_test'));
+
+    // 3. Ordena dando prioridade máxima para conta que tenha CPF válido preenchido
+    filtered.sort((a, b) => {
+      const aHasRealCpf = Boolean(a.cpf && a.cpf !== '00000000000');
+      const bHasRealCpf = Boolean(b.cpf && b.cpf !== '00000000000');
+      if (aHasRealCpf && !bHasRealCpf) return -1;
+      if (!aHasRealCpf && bHasRealCpf) return 1;
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+
+    // 4. Deduplicação estrita por e-mail:
+    // Mantém apenas 1 perfil por e-mail (a conta com CPF real vem primeiro, eliminando placeholders)
+    const seenEmails = new Set();
+    const finalCleanList = [];
+    for (const p of filtered) {
+      const email = (p.email || '').toLowerCase().trim();
+      if (!email || !seenEmails.has(email)) {
+        if (email) seenEmails.add(email);
+        finalCleanList.push(p);
+      }
+    }
+
+    // 5. Atualiza o cache local do navegador para limpar permanentemente dados antigos
+    try {
+      localStorage.setItem('finanzen_app_profiles', JSON.stringify(finalCleanList));
+    } catch (e) {}
+
+    return finalCleanList;
   };
 
   const updateUserStatus = async (targetUserId, newStatus, extraData = {}) => {
