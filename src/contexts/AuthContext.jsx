@@ -652,19 +652,47 @@ export const AuthProvider = ({ children }) => {
           .order('created_at', { ascending: false });
 
         if (!error && data && data.length > 0) {
+          const mapped = data.map((p) => {
+            const isOwner =
+              p.email === 'adam.tv2004@gmail.com' ||
+              p.email === 'lucasadamdeveloper@gmail.com' ||
+              p.cpf === '00000000000';
+            if (isOwner) {
+              return { ...p, is_admin: true, subscription_status: 'active' };
+            }
+            return p;
+          });
+
           // Mescla perfis remotos e locais para que nenhum usuário desapareça
-          const remoteIds = new Set(data.map((p) => p.id));
-          const remoteEmails = new Set(data.map((p) => (p.email || '').toLowerCase()));
-          const unmergedLocals = localUsers.filter(
-            (lu) => !remoteIds.has(lu.id) && !remoteEmails.has((lu.email || '').toLowerCase())
-          );
-          return [...data, ...unmergedLocals];
+          const remoteIds = new Set(mapped.map((p) => p.id));
+          const remoteEmails = new Set(mapped.map((p) => (p.email || '').toLowerCase()));
+          const unmergedLocals = localUsers
+            .filter(
+              (lu) => !remoteIds.has(lu.id) && !remoteEmails.has((lu.email || '').toLowerCase())
+            )
+            .map((lu) => {
+              const isOwner =
+                lu.email === 'adam.tv2004@gmail.com' ||
+                lu.email === 'lucasadamdeveloper@gmail.com' ||
+                lu.cpf === '00000000000';
+              if (isOwner) {
+                return { ...lu, is_admin: true, subscription_status: 'active' };
+              }
+              return lu;
+            });
+          return [...mapped, ...unmergedLocals];
         }
       } catch (err) {
         console.warn('Erro ao buscar todos os perfis no Supabase:', err);
       }
     }
-    return localUsers;
+    return localUsers.map((lu) => {
+      const isOwner =
+        lu.email === 'adam.tv2004@gmail.com' ||
+        lu.email === 'lucasadamdeveloper@gmail.com' ||
+        lu.cpf === '00000000000';
+      return isOwner ? { ...lu, is_admin: true, subscription_status: 'active' } : lu;
+    });
   };
 
   const updateUserStatus = async (targetUserId, newStatus, extraData = {}) => {

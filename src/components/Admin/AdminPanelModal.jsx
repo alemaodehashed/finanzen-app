@@ -136,6 +136,13 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
     }
   };
 
+  const isProfileAdmin = (p) => Boolean(
+    p.is_admin ||
+    p.email === 'adam.tv2004@gmail.com' ||
+    p.email === 'lucasadamdeveloper@gmail.com' ||
+    p.cpf === '00000000000'
+  );
+
   const filteredProfiles = profiles.filter((p) => {
     const matchSearch =
       (p.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -143,18 +150,18 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
       (p.phone || '').includes(searchTerm);
 
     if (statusFilter === 'todos') return matchSearch;
-    if (statusFilter === 'pending') return matchSearch && (p.subscription_status === 'pending' || !p.subscription_status);
-    if (statusFilter === 'active') return matchSearch && p.subscription_status === 'active';
-    if (statusFilter === 'admin') return matchSearch && p.is_admin;
+    if (statusFilter === 'pending') return matchSearch && !isProfileAdmin(p) && (p.subscription_status === 'pending' || !p.subscription_status);
+    if (statusFilter === 'active') return matchSearch && (p.subscription_status === 'active' || isProfileAdmin(p));
+    if (statusFilter === 'admin') return matchSearch && isProfileAdmin(p);
     return matchSearch;
   });
 
   const totalUsers = profiles.length;
   const totalPending = profiles.filter(
-    (p) => p.subscription_status === 'pending' || (!p.subscription_status && !p.is_admin)
+    (p) => !isProfileAdmin(p) && (p.subscription_status === 'pending' || !p.subscription_status)
   ).length;
-  const totalActive = profiles.filter((p) => p.subscription_status === 'active').length;
-  const totalAdmins = profiles.filter((p) => p.is_admin).length;
+  const totalActive = profiles.filter((p) => p.subscription_status === 'active' || isProfileAdmin(p)).length;
+  const totalAdmins = profiles.filter(isProfileAdmin).length;
 
   return (
     <div className="modal-overlay">
@@ -341,8 +348,13 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {filteredProfiles.map((client) => {
-                const isPending = client.subscription_status === 'pending' || (!client.subscription_status && !client.is_admin);
-                const isUserActive = client.subscription_status === 'active' || client.is_admin;
+                const isMasterAdmin =
+                  client.email === 'adam.tv2004@gmail.com' ||
+                  client.email === 'lucasadamdeveloper@gmail.com' ||
+                  client.cpf === '00000000000';
+                const isClientAdmin = Boolean(client.is_admin || isMasterAdmin);
+                const isPending = !isClientAdmin && (client.subscription_status === 'pending' || !client.subscription_status);
+                const isUserActive = isClientAdmin || client.subscription_status === 'active';
 
                 const cleanPhone = (client.phone || '').replace(/\D/g, '');
                 const whatsappText = isPending
@@ -375,7 +387,7 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                           {client.full_name || 'Sem nome'}
                         </span>
 
-                        {client.is_admin && (
+                        {isClientAdmin && (
                           <span style={{ fontSize: '0.7rem', background: '#06b6d4', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
                             ADMIN
                           </span>
@@ -487,8 +499,8 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                         </button>
                       )}
 
-                      {/* Botão de Suspender / Revogar Acesso (Se ativo e não for admin dono) */}
-                      {isUserActive && !client.is_admin && (
+                      {/* Botão de Suspender / Revogar Acesso (Se ativo e não for admin) */}
+                      {isUserActive && !isClientAdmin && (
                         <button
                           type="button"
                           onClick={() => handleRevokeUser(client.id, client.full_name || client.email)}
@@ -501,22 +513,21 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                         </button>
                       )}
 
-                      {/* Alternar Admin */}
-                      <button
-                        type="button"
-                        onClick={() => handleToggleAdmin(client.id, client.full_name || client.email, client.is_admin)}
-                        className="btn btn-secondary btn-sm"
-                        title={client.is_admin ? "Remover privilégio de Admin" : "Tornar Administrador"}
-                      >
-                        <UserCheck size={14} />
-                        <span className="hide-mobile">{client.is_admin ? 'Tirar Admin' : 'Dar Admin'}</span>
-                      </button>
+                      {/* Alternar Admin (Proibido para conta mestre do dono) */}
+                      {!isMasterAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleAdmin(client.id, client.full_name || client.email, isClientAdmin)}
+                          className="btn btn-secondary btn-sm"
+                          title={isClientAdmin ? "Remover privilégio de Admin" : "Tornar Administrador"}
+                        >
+                          <UserCheck size={14} />
+                          <span className="hide-mobile">{isClientAdmin ? 'Tirar Admin' : 'Dar Admin'}</span>
+                        </button>
+                      )}
 
-                      {/* Botão de Excluir Usuário (Proibido para admin dono) */}
-                      {!client.is_admin &&
-                        client.email !== 'adam.tv2004@gmail.com' &&
-                        client.email !== 'lucasadamdeveloper@gmail.com' &&
-                        client.cpf !== '00000000000' && (
+                      {/* Botão de Excluir Usuário (Proibido para admin) */}
+                      {!isClientAdmin && (
                         <button
                           type="button"
                           onClick={() => handleDeleteUser(client.id, client.full_name || client.email)}
