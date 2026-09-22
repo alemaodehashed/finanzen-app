@@ -81,6 +81,7 @@ export const AuthProvider = ({ children }) => {
       if (data) {
         const isOwner =
           data.email === 'adam.tv2004@gmail.com' ||
+          data.email === 'lucasadamdeveloper@gmail.com' ||
           data.cpf === '00000000000' ||
           data.is_admin === true;
 
@@ -195,7 +196,10 @@ export const AuthProvider = ({ children }) => {
 
     const userId = cpfToUUID(clean);
     const pwdHash = await hashPassword(password);
-    const isOwner = cleanEmail === 'adam.tv2004@gmail.com' || clean === '00000000000';
+    const isOwner =
+      cleanEmail === 'adam.tv2004@gmail.com' ||
+      cleanEmail === 'lucasadamdeveloper@gmail.com' ||
+      clean === '00000000000';
     const initialStatus = 'active';
 
     // 1. Verifica duplicidade de CPF e E-mail
@@ -366,6 +370,7 @@ export const AuthProvider = ({ children }) => {
 
     const isAdminAccount =
       cleanEmail === 'adam.tv2004@gmail.com' ||
+      cleanEmail === 'lucasadamdeveloper@gmail.com' ||
       cleanEmail === 'admin@finantemps.com' ||
       cleanInput.toLowerCase() === 'admin' ||
       digits === '00000000000';
@@ -525,6 +530,7 @@ export const AuthProvider = ({ children }) => {
     if (
       profile?.is_admin ||
       user?.email === 'adam.tv2004@gmail.com' ||
+      user?.email === 'lucasadamdeveloper@gmail.com' ||
       user?.email === 'admin@finantemps.com'
     ) return true;
     return profile?.subscription_status === 'active';
@@ -604,6 +610,7 @@ export const AuthProvider = ({ children }) => {
   const isAdmin = Boolean(
     profile?.is_admin ||
     user?.email === 'adam.tv2004@gmail.com' ||
+    user?.email === 'lucasadamdeveloper@gmail.com' ||
     user?.email === 'admin@finantemps.com'
   );
 
@@ -674,6 +681,7 @@ export const AuthProvider = ({ children }) => {
     // Protege contra exclusão da conta mestre do dono ou de si mesmo
     if (
       target?.email === 'adam.tv2004@gmail.com' ||
+      target?.email === 'lucasadamdeveloper@gmail.com' ||
       target?.cpf === '00000000000' ||
       user?.id === userId
     ) {

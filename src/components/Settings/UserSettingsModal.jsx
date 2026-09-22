@@ -95,7 +95,11 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
 
         {/* Card de Acesso do Usuário */}
         {(() => {
-          const isUserApproved = profile?.subscription_status === 'active' || profile?.is_admin || user?.email === 'adam.tv2004@gmail.com';
+          const isUserApproved =
+            profile?.subscription_status === 'active' ||
+            profile?.is_admin ||
+            user?.email === 'adam.tv2004@gmail.com' ||
+            user?.email === 'lucasadamdeveloper@gmail.com';
           return (
             <div
               style={{

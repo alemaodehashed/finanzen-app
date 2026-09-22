@@ -513,7 +513,10 @@ export const AdminPanelModal = ({ isOpen, onClose }) => {
                       </button>
 
                       {/* Botão de Excluir Usuário (Proibido para admin dono) */}
-                      {!client.is_admin && client.email !== 'adam.tv2004@gmail.com' && client.cpf !== '00000000000' && (
+                      {!client.is_admin &&
+                        client.email !== 'adam.tv2004@gmail.com' &&
+                        client.email !== 'lucasadamdeveloper@gmail.com' &&
+                        client.cpf !== '00000000000' && (
                         <button
                           type="button"
                           onClick={() => handleDeleteUser(client.id, client.full_name || client.email)}
