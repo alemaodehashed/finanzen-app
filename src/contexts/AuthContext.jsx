@@ -576,28 +576,56 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (updates) => {
     if (!user) return { error: 'Usuário não autenticado' };
 
+    let pwdHash = undefined;
+    if (updates.password && typeof updates.password === 'string' && updates.password.trim().length >= 6) {
+      pwdHash = await hashPassword(updates.password.trim());
+    }
+
     const updatedProfile = {
       ...profile,
       ...updates,
+      ...(pwdHash ? { password_hash: pwdHash } : {}),
       updated_at: new Date().toISOString(),
     };
+    delete updatedProfile.password;
+
     setProfile(updatedProfile);
     saveDemoUser(updatedProfile);
 
-    if (supabase) {
+    // Atualiza estado do user para refletir em toda a interface
+    setUser((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        user_metadata: {
+          ...prev.user_metadata,
+          full_name: updatedProfile.full_name ?? prev.user_metadata?.full_name,
+          phone: updatedProfile.phone ?? prev.user_metadata?.phone,
+        },
+      };
+    });
+
+    if (supabase && user.id) {
       try {
+        const dbUpdates = {
+          updated_at: new Date().toISOString(),
+        };
+        if (updates.full_name !== undefined) dbUpdates.full_name = updates.full_name;
+        if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+        if (updates.savings_goal !== undefined) dbUpdates.savings_goal = Number(updates.savings_goal) || 0;
+        if (updates.settings !== undefined) dbUpdates.settings = updates.settings;
+        if (pwdHash) dbUpdates.password_hash = pwdHash;
+
         const { error } = await supabase
           .from('profiles')
-          .update({
-            full_name: updates.full_name,
-            phone: updates.phone,
-            savings_goal: Number(updates.savings_goal) || 0,
-            settings: updates.settings || profile?.settings || {},
-            updated_at: new Date().toISOString(),
-          })
+          .update(dbUpdates)
           .eq('id', user.id);
 
-        return { error };
+        if (error) {
+          console.warn('Erro ao atualizar perfil no Supabase:', error.message);
+          return { error };
+        }
+        return { error: null };
       } catch (err) {
         console.error('Erro ao atualizar perfil no Supabase:', err);
         return { error: err };

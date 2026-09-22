@@ -198,7 +198,7 @@ export const Navbar = ({ onOpenAuth, onOpenSettings, onOpenAdminPanel, onOpenAbo
                   }}
                 />
                 <span style={{ color: isAdmin ? '#f59e0b' : 'var(--text-muted)', fontWeight: isAdmin ? 700 : 500, maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {isAdmin ? '👑 3º Sgt Adam' : (profile?.full_name || user.email)}
+                  {isAdmin ? `👑 ${profile?.full_name || 'Admin'}` : (profile?.full_name || user.email)}
                 </span>
                 <Settings size={13} style={{ opacity: 0.7 }} />
               </button>

@@ -1,86 +1,196 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { formatCurrency, formatDate } from '../../utils/formatters';
+import { formatCPF } from '../../utils/formatters';
 import {
   X,
   User,
   Phone,
   Target,
-  Crown,
-  Calendar,
   CheckCircle2,
   Save,
-  Shield
+  Lock,
+  Eye,
+  EyeOff,
+  Cloud,
+  RefreshCw,
+  AlertCircle,
+  KeyRound
 } from 'lucide-react';
 
 export const UserSettingsModal = ({ isOpen, onClose }) => {
-  const { user, profile, updateProfile, getDaysRemainingInTrial } = useAuth();
+  const { user, profile, updateProfile } = useAuth();
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [savingsGoal, setSavingsGoal] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
+  
+  // Troca de Senha
+  const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordFeedback, setPasswordFeedback] = useState({ msg: '', type: '' });
+  const [savingPassword, setSavingPassword] = useState(false);
 
+  // Status do Salvamento Automático: 'idle' | 'saving' | 'saved' | 'error'
+  const [autoSaveStatus, setAutoSaveStatus] = useState('saved');
+  const [lastSavedTime, setLastSavedTime] = useState(null);
+
+  const debounceTimerRef = useRef(null);
+  const isLoadedRef = useRef(false);
+
+  // Carrega os dados do perfil quando o modal abre ou quando o perfil é alterado
   useEffect(() => {
-    if (profile) {
+    if (profile && isOpen) {
       setFullName(profile.full_name || '');
       setPhone(profile.phone || '');
-      setSavingsGoal(profile.savings_goal || '');
+      setSavingsGoal(profile.savings_goal !== undefined && profile.savings_goal !== null ? String(profile.savings_goal) : '');
+      setNewPassword('');
+      setPasswordFeedback({ msg: '', type: '' });
+      setAutoSaveStatus('saved');
+      // Pequeno delay para evitar disparar auto-save na montagem
+      setTimeout(() => {
+        isLoadedRef.current = true;
+      }, 300);
     }
+    return () => {
+      isLoadedRef.current = false;
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
   }, [profile, isOpen]);
 
-  if (!isOpen) return null;
+  // Função central de salvamento imediato no Supabase e LocalStorage
+  const saveUserData = useCallback(async (overrides = {}) => {
+    const dataToSave = {
+      full_name: overrides.fullName !== undefined ? overrides.fullName : fullName,
+      phone: overrides.phone !== undefined ? overrides.phone : phone,
+      savings_goal: Number(overrides.savingsGoal !== undefined ? overrides.savingsGoal : savingsGoal) || 0,
+    };
 
-  const handleSubmit = async (e) => {
+    setAutoSaveStatus('saving');
+
+    try {
+      const { error } = await updateProfile(dataToSave);
+      if (!error) {
+        setAutoSaveStatus('saved');
+        setLastSavedTime(new Date());
+      } else {
+        setAutoSaveStatus('error');
+      }
+    } catch (err) {
+      console.warn('Erro no salvamento automático:', err);
+      setAutoSaveStatus('error');
+    }
+  }, [fullName, phone, savingsGoal, updateProfile]);
+
+  // Agenda salvamento automático com debounce de 700ms ao digitar
+  const triggerDebouncedAutoSave = useCallback((newValues = {}) => {
+    if (!isLoadedRef.current) return;
+    setAutoSaveStatus('saving');
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      saveUserData(newValues);
+    }, 700);
+  }, [saveUserData]);
+
+  // Ao perder o foco (onBlur) de qualquer campo, salva imediatamente sem delay
+  const handleBlur = (fieldName, value) => {
+    if (!isLoadedRef.current) return;
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    saveUserData({ [fieldName]: value });
+  };
+
+  // Trocar senha de acesso
+  const handleUpdatePassword = async (e) => {
     e.preventDefault();
-    setSaving(true);
-    setSuccessMsg('');
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordFeedback({
+        msg: 'A nova senha deve ter no mínimo 6 caracteres.',
+        type: 'error'
+      });
+      return;
+    }
 
-    const { error } = await updateProfile({
-      full_name: fullName,
-      phone: phone,
-      savings_goal: Number(savingsGoal) || 0,
-    });
+    setSavingPassword(true);
+    setPasswordFeedback({ msg: '', type: '' });
 
-    setSaving(false);
-    if (!error) {
-      setSuccessMsg('Configurações salvas com sucesso!');
-      setTimeout(() => {
-        setSuccessMsg('');
-        onClose();
-      }, 1200);
-    } else {
-      alert('Erro ao salvar configurações.');
+    try {
+      const { error } = await updateProfile({ password: newPassword });
+      if (!error) {
+        setPasswordFeedback({
+          msg: 'Senha atualizada com sucesso na nuvem!',
+          type: 'success'
+        });
+        setNewPassword('');
+        setAutoSaveStatus('saved');
+      } else {
+        setPasswordFeedback({
+          msg: 'Erro ao atualizar senha. Tente novamente.',
+          type: 'error'
+        });
+      }
+    } catch (err) {
+      setPasswordFeedback({
+        msg: 'Erro de conexão ao atualizar senha.',
+        type: 'error'
+      });
+    } finally {
+      setSavingPassword(false);
     }
   };
 
+  // Fechar garantindo que qualquer alteração pendente seja salva
+  const handleClose = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      saveUserData();
+    }
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  const isUserApproved =
+    profile?.subscription_status === 'active' ||
+    profile?.is_admin ||
+    user?.email === 'adam.tv2004@gmail.com' ||
+    user?.email === 'lucasadamdeveloper@gmail.com';
+
   return (
     <div className="modal-overlay">
-      <div className="modal-content" style={{ padding: '28px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div className="modal-content" style={{ padding: '28px', maxWidth: '520px' }}>
+        {/* Cabeçalho com Status de Salvamento em Tempo Real */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
                 background: 'var(--primary-glow)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                boxShadow: '0 0 15px rgba(16, 185, 129, 0.2)',
               }}
             >
-              <User size={20} color="var(--primary)" />
+              <User size={22} color="var(--primary)" />
             </div>
             <div>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>Minha Conta & Preferências</h3>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>{user?.email}</p>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>
+                {user?.email || (user?.cpf && formatCPF(user.cpf)) || 'Conta Usuário'}
+              </p>
             </div>
           </div>
+
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               background: 'none',
               border: 'none',
@@ -93,102 +203,134 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
           </button>
         </div>
 
+        {/* Indicador Flutuante de Salvamento Automático */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px 12px',
+            borderRadius: 'var(--radius-sm)',
+            background:
+              autoSaveStatus === 'saving'
+                ? 'rgba(6, 182, 212, 0.12)'
+                : autoSaveStatus === 'error'
+                ? 'rgba(239, 68, 68, 0.12)'
+                : 'rgba(16, 185, 129, 0.1)',
+            border:
+              autoSaveStatus === 'saving'
+                ? '1px solid rgba(6, 182, 212, 0.3)'
+                : autoSaveStatus === 'error'
+                ? '1px solid rgba(239, 68, 68, 0.3)'
+                : '1px solid rgba(16, 185, 129, 0.25)',
+            marginBottom: '16px',
+            fontSize: '0.8rem',
+            transition: 'all 0.3s ease',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+            {autoSaveStatus === 'saving' && (
+              <>
+                <RefreshCw size={14} color="#06b6d4" className="spin" />
+                <span style={{ color: '#06b6d4', fontWeight: 600 }}>Salvando alterações na nuvem...</span>
+              </>
+            )}
+            {autoSaveStatus === 'saved' && (
+              <>
+                <CheckCircle2 size={14} color="#10b981" />
+                <span style={{ color: '#10b981', fontWeight: 600 }}>Salvo automaticamente na Nuvem</span>
+              </>
+            )}
+            {autoSaveStatus === 'error' && (
+              <>
+                <AlertCircle size={14} color="#ef4444" />
+                <span style={{ color: '#ef4444', fontWeight: 600 }}>Salvo no dispositivo (reconectando nuvem...)</span>
+              </>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-dim)', fontSize: '0.72rem' }}>
+            <Cloud size={12} />
+            <span>Sincronização Ativa</span>
+          </div>
+        </div>
+
         {/* Card de Acesso do Usuário */}
-        {(() => {
-          const isUserApproved =
-            profile?.subscription_status === 'active' ||
-            profile?.is_admin ||
-            user?.email === 'adam.tv2004@gmail.com' ||
-            user?.email === 'lucasadamdeveloper@gmail.com';
-          return (
-            <div
-              style={{
-                padding: '14px 16px',
-                borderRadius: 'var(--radius-md)',
-                background: isUserApproved
-                  ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.12))'
-                  : 'rgba(245, 158, 11, 0.12)',
-                border: isUserApproved
-                  ? '1px solid rgba(16, 185, 129, 0.3)'
-                  : '1px solid rgba(245, 158, 11, 0.35)',
-                marginBottom: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <CheckCircle2 size={16} color={isUserApproved ? '#10b981' : '#f59e0b'} />
-                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff' }}>
-                    {isUserApproved ? 'Acesso Autorizado' : 'Aguardando Aprovação'}
-                  </span>
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  {isUserApproved
-                    ? 'Acesso liberado pelo administrador para uso completo'
-                    : 'Aguardando liberação do administrador no painel'}
-                </div>
-              </div>
-              <span
-                className="badge badge-pro"
-                style={{
-                  background: isUserApproved ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                  color: isUserApproved ? '#10b981' : '#f59e0b',
-                  border: isUserApproved ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(245, 158, 11, 0.4)',
-                }}
-              >
-                {isUserApproved ? 'LIBERADO' : 'PENDENTE'}
+        <div
+          style={{
+            padding: '12px 14px',
+            borderRadius: 'var(--radius-md)',
+            background: isUserApproved
+              ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.08))'
+              : 'rgba(245, 158, 11, 0.1)',
+            border: isUserApproved
+              ? '1px solid rgba(16, 185, 129, 0.25)'
+              : '1px solid rgba(245, 158, 11, 0.3)',
+            marginBottom: '18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle2 size={15} color={isUserApproved ? '#10b981' : '#f59e0b'} />
+              <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#fff' }}>
+                {isUserApproved ? 'Acesso Autorizado' : 'Aguardando Aprovação'}
               </span>
             </div>
-          );
-        })()}
-
-        {successMsg && (
-          <div
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+              {isUserApproved
+                ? 'Sua conta e finanças são salvas e sincronizadas em nuvem'
+                : 'Aguardando liberação do administrador'}
+            </div>
+          </div>
+          <span
+            className="badge badge-pro"
             style={{
-              background: 'rgba(16, 185, 129, 0.15)',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              color: '#10b981',
-              padding: '10px 14px',
-              borderRadius: '8px',
-              fontSize: '0.85rem',
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
+              background: isUserApproved ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+              color: isUserApproved ? '#10b981' : '#f59e0b',
+              border: isUserApproved ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(245, 158, 11, 0.4)',
+              fontSize: '0.7rem',
+              padding: '3px 8px',
             }}
           >
-            <CheckCircle2 size={16} />
-            {successMsg}
-          </div>
-        )}
+            {isUserApproved ? 'LIBERADO' : 'PENDENTE'}
+          </span>
+        </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">Nome Completo</label>
+        {/* Formulário de Dados Pessoais com Salvamento Automático */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.82rem' }}>
+              Nome Completo
+            </label>
             <div style={{ position: 'relative' }}>
               <User
-                size={18}
+                size={17}
                 style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-dim)' }}
               />
               <input
                 type="text"
                 className="form-control"
                 style={{ paddingLeft: '38px' }}
-                placeholder="Seu nome"
+                placeholder="Seu nome completo"
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
+                onChange={(e) => {
+                  setFullName(e.target.value);
+                  triggerDebouncedAutoSave({ fullName: e.target.value });
+                }}
+                onBlur={(e) => handleBlur('fullName', e.target.value)}
               />
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Telefone / WhatsApp</label>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.82rem' }}>
+              Telefone / WhatsApp
+            </label>
             <div style={{ position: 'relative' }}>
               <Phone
-                size={18}
+                size={17}
                 style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-dim)' }}
               />
               <input
@@ -197,16 +339,22 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
                 style={{ paddingLeft: '38px' }}
                 placeholder="(00) 00000-0000"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  triggerDebouncedAutoSave({ phone: e.target.value });
+                }}
+                onBlur={(e) => handleBlur('phone', e.target.value)}
               />
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Meta Mensal de Economia (R$)</label>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.82rem' }}>
+              Meta Mensal de Economia (R$)
+            </label>
             <div style={{ position: 'relative' }}>
               <Target
-                size={18}
+                size={17}
                 style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-dim)' }}
               />
               <input
@@ -217,24 +365,115 @@ export const UserSettingsModal = ({ isOpen, onClose }) => {
                 style={{ paddingLeft: '38px' }}
                 placeholder="Ex: 500,00"
                 value={savingsGoal}
-                onChange={(e) => setSavingsGoal(e.target.value)}
+                onChange={(e) => {
+                  setSavingsGoal(e.target.value);
+                  triggerDebouncedAutoSave({ savingsGoal: e.target.value });
+                }}
+                onBlur={(e) => handleBlur('savingsGoal', e.target.value)}
               />
             </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-              Defina quanto quer economizar por mês para acompanhar sua barra de progresso no painel.
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+              Atualiza instantaneamente a barra de meta no painel do aplicativo.
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
-            <button type="button" onClick={onClose} className="btn btn-secondary" style={{ flex: 1 }}>
-              Cancelar
-            </button>
-            <button type="submit" disabled={saving} className="btn btn-primary" style={{ flex: 1 }}>
-              <Save size={16} />
-              {saving ? 'Salvando...' : 'Salvar Alterações'}
-            </button>
+          {/* Seção de Troca de Senha */}
+          <div
+            style={{
+              marginTop: '8px',
+              paddingTop: '16px',
+              borderTop: '1px solid var(--border-color)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+              <KeyRound size={15} color="var(--primary)" />
+              <label className="form-label" style={{ margin: 0, fontSize: '0.82rem', fontWeight: 700 }}>
+                Alterar Senha de Acesso
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <Lock
+                  size={16}
+                  style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-dim)' }}
+                />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="form-control"
+                  style={{ paddingLeft: '36px', paddingRight: '36px', fontSize: '0.88rem' }}
+                  placeholder="Nova senha (mín. 6 dígitos)"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '10px',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-dim)',
+                    cursor: 'pointer',
+                    padding: '2px',
+                  }}
+                  title={showPassword ? 'Ocultar senha' : 'Ver senha'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleUpdatePassword}
+                disabled={savingPassword || !newPassword || newPassword.length < 6}
+                className="btn btn-primary btn-sm"
+                style={{
+                  whiteSpace: 'nowrap',
+                  padding: '0 14px',
+                  opacity: (!newPassword || newPassword.length < 6) ? 0.5 : 1,
+                }}
+              >
+                {savingPassword ? 'Salvando...' : 'Atualizar'}
+              </button>
+            </div>
+
+            {passwordFeedback.msg && (
+              <div
+                style={{
+                  marginTop: '8px',
+                  fontSize: '0.78rem',
+                  color: passwordFeedback.type === 'success' ? '#10b981' : '#ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                }}
+              >
+                {passwordFeedback.type === 'success' ? (
+                  <CheckCircle2 size={13} />
+                ) : (
+                  <AlertCircle size={13} />
+                )}
+                <span>{passwordFeedback.msg}</span>
+              </div>
+            )}
           </div>
-        </form>
+        </div>
+
+        {/* Botão de Fechar Concluído */}
+        <div style={{ marginTop: '22px' }}>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="btn btn-primary"
+            style={{ width: '100%', justifyContent: 'center' }}
+          >
+            <CheckCircle2 size={16} />
+            Concluir & Fechar
+          </button>
+        </div>
       </div>
     </div>
   );
