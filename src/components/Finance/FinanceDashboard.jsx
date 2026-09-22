@@ -345,7 +345,7 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
             {formatCurrency(totalEntradas)}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-            Fixo: {formatCurrency(totalRendaPrincipal)} | Extra: {formatCurrency(totalRendaExtra)}
+            Principal: {formatCurrency(totalRendaPrincipal)} | Extra: {formatCurrency(totalRendaExtra)}
           </div>
         </div>
 
@@ -556,11 +556,11 @@ export const FinanceDashboard = ({ onOpenNewModal }) => {
                 onChange={(e) => setFilterType(e.target.value)}
               >
                 <option value="todos">Todos os Tipos</option>
-                <option value="despesa_casa">Despesas de Casa</option>
-                <option value="negocio">Negócio Próprio</option>
-                <option value="investimento">Investimentos (Aportes)</option>
-                <option value="renda">Salário Fixo</option>
-                <option value="renda_extra">Renda Extra / Dividendos</option>
+                <option value="renda">Renda Principal</option>
+                <option value="despesa_casa">Despesas</option>
+                <option value="renda_extra">Renda Extra</option>
+                <option value="negocio">Meu Negócio</option>
+                <option value="investimento">Investimentos</option>
               </select>
 
               {availableCategories.length > 0 && (

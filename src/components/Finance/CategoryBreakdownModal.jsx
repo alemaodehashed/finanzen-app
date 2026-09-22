@@ -18,7 +18,8 @@ import {
   Briefcase,
   Layers,
   ArrowDownRight,
-  TrendingDown
+  TrendingDown,
+  TrendingUp
 } from 'lucide-react';
 
 const MONTH_NAMES = [

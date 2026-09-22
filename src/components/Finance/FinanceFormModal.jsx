@@ -14,7 +14,7 @@ const CATEGORIES = {
     'Lazer & Família',
     'Vestuário & Cuidados Pessoais',
     'Assinaturas & Streaming',
-    'Outras Despesas de Casa',
+    'Outras Despesas',
   ],
   investimento: [
     'Ações & Fundos Imobiliários (FIIs)',
@@ -204,7 +204,27 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
         </div>
 
         {/* Seletor de Tipo com visual em abas/botões */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', marginBottom: '18px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '18px' }}>
+          <button
+            type="button"
+            className={`btn btn-sm ${formData.type === 'renda' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              background: formData.type === 'renda' ? 'rgba(16, 185, 129, 0.25)' : undefined,
+              borderColor: formData.type === 'renda' ? '#10b981' : undefined,
+              color: formData.type === 'renda' ? '#fff' : undefined,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              padding: '10px 8px',
+              fontWeight: 600,
+            }}
+            onClick={() => handleTypeChange('renda')}
+          >
+            <DollarSign size={15} color={formData.type === 'renda' ? '#10b981' : 'var(--text-dim)'} />
+            <span>Renda Principal</span>
+          </button>
+
           <button
             type="button"
             className={`btn btn-sm ${formData.type === 'despesa_casa' ? 'btn-primary' : 'btn-secondary'}`}
@@ -212,31 +232,17 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
               background: formData.type === 'despesa_casa' ? 'rgba(244, 63, 94, 0.25)' : undefined,
               borderColor: formData.type === 'despesa_casa' ? '#f43f5e' : undefined,
               color: formData.type === 'despesa_casa' ? '#fff' : undefined,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              padding: '10px 8px',
+              fontWeight: 600,
             }}
             onClick={() => handleTypeChange('despesa_casa')}
           >
-            <Home size={14} /> Despesa de Casa
-          </button>
-
-          <button
-            type="button"
-            className={`btn btn-sm ${formData.type === 'investimento' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{
-              background: formData.type === 'investimento' ? 'rgba(139, 92, 246, 0.25)' : undefined,
-              borderColor: formData.type === 'investimento' ? '#8b5cf6' : undefined,
-              color: formData.type === 'investimento' ? '#fff' : undefined,
-            }}
-            onClick={() => handleTypeChange('investimento')}
-          >
-            <TrendingUp size={14} color="#a78bfa" /> Investimento
-          </button>
-
-          <button
-            type="button"
-            className={`btn btn-sm ${formData.type === 'renda' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => handleTypeChange('renda')}
-          >
-            <DollarSign size={14} /> Salário / Renda
+            <Home size={15} color={formData.type === 'despesa_casa' ? '#f43f5e' : 'var(--text-dim)'} />
+            <span>Despesas</span>
           </button>
 
           <button
@@ -246,10 +252,17 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
               background: formData.type === 'renda_extra' ? 'rgba(6, 182, 212, 0.25)' : undefined,
               borderColor: formData.type === 'renda_extra' ? '#06b6d4' : undefined,
               color: formData.type === 'renda_extra' ? '#fff' : undefined,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              padding: '10px 8px',
+              fontWeight: 600,
             }}
             onClick={() => handleTypeChange('renda_extra')}
           >
-            <Sparkles size={14} /> Renda Extra
+            <Sparkles size={15} color={formData.type === 'renda_extra' ? '#06b6d4' : 'var(--text-dim)'} />
+            <span>Renda Extra</span>
           </button>
 
           <button
@@ -259,10 +272,38 @@ export const FinanceFormModal = ({ isOpen, onClose }) => {
               background: formData.type === 'negocio' ? 'rgba(245, 158, 11, 0.25)' : undefined,
               borderColor: formData.type === 'negocio' ? '#f59e0b' : undefined,
               color: formData.type === 'negocio' ? '#fff' : undefined,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              padding: '10px 8px',
+              fontWeight: 600,
             }}
             onClick={() => handleTypeChange('negocio')}
           >
-            <Briefcase size={14} /> Meu Negócio
+            <Briefcase size={15} color={formData.type === 'negocio' ? '#f59e0b' : 'var(--text-dim)'} />
+            <span>Meu Negócio</span>
+          </button>
+
+          <button
+            type="button"
+            className={`btn btn-sm ${formData.type === 'investimento' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              gridColumn: 'span 2',
+              background: formData.type === 'investimento' ? 'rgba(139, 92, 246, 0.25)' : undefined,
+              borderColor: formData.type === 'investimento' ? '#8b5cf6' : undefined,
+              color: formData.type === 'investimento' ? '#fff' : undefined,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              padding: '10px 8px',
+              fontWeight: 600,
+            }}
+            onClick={() => handleTypeChange('investimento')}
+          >
+            <TrendingUp size={15} color={formData.type === 'investimento' ? '#a78bfa' : 'var(--text-dim)'} />
+            <span>Investimentos</span>
           </button>
         </div>
 

@@ -9,10 +9,10 @@ export const exportToCSV = (records, filename = 'relatorio_financeiro.csv') => {
   const headers = ['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor (R$)'];
   const typeLabels = {
     renda: 'Renda Principal',
-    renda_extra: 'Renda Extra & Dividendos',
-    despesa_casa: 'Despesa de Casa',
-    investimento: 'Investimentos / Aporte',
-    negocio: 'Negócio / Renda Autônoma',
+    despesa_casa: 'Despesas',
+    renda_extra: 'Renda Extra',
+    negocio: 'Meu Negócio',
+    investimento: 'Investimentos',
   };
 
   const rows = records.map((r) => [
